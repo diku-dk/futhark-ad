@@ -1,0 +1,51 @@
+name:                autodiffexamples
+version:             0.1.0.0
+github:              "ahmadsalim/autodiffexamples"
+license:             BSD3
+author:              "Ahmad Salim Al-Sibahi"
+maintainer:          "ahmad@di.ku.dk"
+copyright:           "(2019)"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Code
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/ahmadsalim/autodiffexamples#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- tensors >= 0.1 && < 0.2
+- singletons >= 2.5 && < 2.6
+- ghc-typelits-knownnat >= 0.6 && < 0.7
+
+library:
+  source-dirs: src
+
+executables:
+  autodiffexamples-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - autodiffexamples
+
+tests:
+  autodiffexamples-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - autodiffexamples
