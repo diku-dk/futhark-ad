@@ -7,15 +7,17 @@ Examples
 
 ### Implemented Models
 
+#### Simple
+* Linear-Logistic Regression Model
+* Stochastic Gradient Descend Optimizer
+
 ### Planned Models
 
 #### Simple
 * Beta-Bernoulli Model
 * Dirichlet-Marginalized Gaussian Mixture Model
-* Linear-Logistic Regression Model (Incl. Bayesian version?)
 * Fully Connected Neural Network Model (with activation functions tanh/sigmoid/ReLU/ELU etc.)
 * Simulated Annealing Optimizer
-* Stochastic Gradient Descend Optimizer
 
 ### Moderate
 * MvNormal/LKJ-MvNormal Model

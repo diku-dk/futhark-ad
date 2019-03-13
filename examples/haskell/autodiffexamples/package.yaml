@@ -24,6 +24,7 @@ dependencies:
 - tensors >= 0.1 && < 0.2
 - singletons >= 2.5 && < 2.6
 - ghc-typelits-knownnat >= 0.6 && < 0.7
+- NumInstances >= 1.4 && < 1.5
 
 library:
   source-dirs: src
@@ -36,6 +37,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - autodiffexamples
 
