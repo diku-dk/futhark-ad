@@ -2,7 +2,7 @@
 module Main where
 
 import LogisticRegression
-import StochasticGradientDescend
+import Optim
 import Data.Tensor
 
 main :: IO ()

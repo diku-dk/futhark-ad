@@ -21,6 +21,9 @@ description:         Please see the README on GitHub at <https://github.com/ahma
 
 dependencies:
 - base >= 4.7 && < 5
+- mtl >= 2.2 && < 2.3
+- random >= 1.1 && < 1.2
+- list-extras >= 0.4 && < 0.5
 - tensors >= 0.1 && < 0.2
 - singletons >= 2.5 && < 2.6
 - ghc-typelits-knownnat >= 0.6 && < 0.7

@@ -9,12 +9,13 @@ Examples
 
 #### Simple
 * Linear-Logistic Regression Model
-* Stochastic Gradient Descend Optimizer
+* Beta-Binomial Model
+* Stochastic Gradient Descent Optimizer
+* Particle Swarm Optimizer
 
 ### Planned Models
 
 #### Simple
-* Beta-Bernoulli Model
 * Dirichlet-Marginalized Gaussian Mixture Model
 * Fully Connected Neural Network Model (with activation functions tanh/sigmoid/ReLU/ELU etc.)
 * Simulated Annealing Optimizer

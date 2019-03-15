@@ -6,6 +6,7 @@ import Data.Tensor
 import Data.Singletons
 import GHC.TypeNats
 import Data.Foldable
+import Util
 
 test_data :: (Floating a) => (Tensor '[5, 2] a, Vector 5 Bool)
 test_data = ([13.0, 15.0,
@@ -17,9 +18,6 @@ test_data = ([13.0, 15.0,
 
 start_ws :: (Floating a) => Vector 3 a
 start_ws = [-5.0, -5.0, 5.0]
-
-sigmoid :: (Floating a, SingI s) => Tensor s a -> Tensor s a
-sigmoid xs = fmap (\ v -> 1 / (1 + exp (- v))) xs
 
 add_const_ones :: forall a n b. (Floating a, Eq a, KnownNat n, KnownNat b) => Tensor '[b, n] a -> Tensor '[b, 1 + n] a
 add_const_ones xs = concatenate i1 ones xs
