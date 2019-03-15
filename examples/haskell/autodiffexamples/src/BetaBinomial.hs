@@ -8,5 +8,11 @@ import GHC.TypeNats
 import Data.Foldable
 import Util
 
-betabinomial_logpmf :: (Ord a, Floating a) => a -> a -> a -> a -> a
-betabinomial_logpmf n a b x = log_binomial n x + log_beta (x + a) (n - x + b) - log_beta a b
+betabinomial_logpmf :: forall n. (Ord n, Floating n) => Integer -> Rational -> Rational -> n -> n
+betabinomial_logpmf n a b x = log_binomial n' x + log_beta (x + a') (n' - x + b') - log_beta a' b'
+    where a' :: n
+          a' = fromRational a
+          b' :: n
+          b' = fromRational b
+          n' :: n
+          n' = fromInteger n
