@@ -23,6 +23,7 @@ Examples
 ### Moderate
 * MvNormal/LKJ-MvNormal Model
 * Dirichlet-Delayed Categorical-Gaussian Mixture Model
+* Stein Variational Gradient Descent and related papers (MP-SGVD?)
 * Markov Chain Monte Carlo Sampler
 
 ### Hard
