@@ -1,8 +1,8 @@
 import "lib/github.com/diku-dk/cpprandom/random"
 
 module type optimizable = {
-  module param: numeric
-  module loss: numeric
+  module param: real
+  module loss: real
   type data
   val eval_loss: param.t -> data -> loss.t
 }
@@ -19,8 +19,8 @@ module type bound_optimizable = {
 }
 
 module type optimizer = {
-  module param: numeric
-  module loss: numeric
+  module param: real
+  module loss: real
   type data
 
   type options
