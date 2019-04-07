@@ -85,7 +85,7 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
   let run ({swarm_size,acceleration_rate,local_learning_rate,global_learning_rate}:options) (rng: rng) (p: param.t) (xs: data) (n_iters: i32) =
     let (rng, ps) = sample rng optable.param_lower optable.param_upper swarm_size
     let param_range = optable.param_upper param.- optable.param_lower
-    let (rng, vs) = sample rng (param.f32 0.0 param.- param_range) param_range swarm_size
+    let (rng, vs) = sample rng (param.negate param_range) param_range swarm_size
     let gl = p
     let (rng, losses, _, _, gl, _) =
       loop (rng, losses, ps, bps, gl, vs) = (rng, [], ps, ps, gl, vs) for _i < n_iters do
