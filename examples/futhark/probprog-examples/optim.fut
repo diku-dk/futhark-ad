@@ -104,5 +104,3 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
     in (rng, losses, gl)
   let run' = run default_options
 }
-
-let main:f32 = -2.0
