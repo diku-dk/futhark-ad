@@ -73,10 +73,10 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
   let default_options: options = {swarm_size=100,acceleration_rate=(-0.5),local_learning_rate=0.5,global_learning_rate=3.0}
 
   let sample (rng: rng) (lower: param.t) (upper: param.t) (n: i32): (rng, []param.t) =
-    let sample_op ((rng, samples): (E.rng, []param.t)) (_i: i32) =
-      let (rng, a) = unif_dist.rand (lower, upper) rng
-      in (rng, concat samples [a])
-    in foldl sample_op (rng, []) (iota n)
+    let (rngs, vals) = E.split_rng n rng 
+                     |> map (unif_dist.rand (lower, upper))
+                     |> unzip
+    in (E.join_rng rngs, vals)
 
   let argmin (lf: param.t -> loss.t) (ps: []param.t) =
     let argmin_op p p' = if lf p loss.< lf p' then p else p'
@@ -89,14 +89,15 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
     let gl = p
     let (rng, losses, _, _, gl, _) =
       loop (rng, losses, ps, bps, gl, vs) = (rng, [], ps, ps, gl, vs) for _i < n_iters do
-      let sample_vs (rng, vs) (p, bp, v) =
+      let sample_vs (rng, p, bp, v) =
         let (rng, rp) = unif_dist.rand (param.f32 0.0, param.f32 1.0) rng
         let (rng, rg) = unif_dist.rand (param.f32 0.0, param.f32 1.0) rng
         let new_v = param.f32 acceleration_rate param.* v param.+
                     param.f32 local_learning_rate param.* rp param.* (bp param.- p) param.+
                     param.f32 global_learning_rate param.* rg param.* (gl param.- p)
-        in (rng, concat vs [new_v])
-      let (rng, vs) = foldl sample_vs (rng, []) (zip3 ps bps vs)
+        in (rng, new_v)
+      let (rngs, vs) = map sample_vs (zip4 (E.split_rng swarm_size rng) ps bps vs) |> unzip
+      let rng = E.join_rng rngs
       let ps = map2 (\p v -> p param.+ v) ps vs
       let bps = map2 (\p bp -> if optable.eval_loss p xs loss.< optable.eval_loss bp xs then p else bp) ps bps
       let gl = argmin (\bp -> optable.eval_loss bp xs) bps

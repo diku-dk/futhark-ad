@@ -45,10 +45,9 @@ module dirichlet_distribution (R: real) (E: rng_engine) = {
 
   let rand ({concentrations}: distribution) (rng: E.rng): (E.rng, []R.t) =
     assert (length concentrations > 0 && all (R.> R.f32 0.0) concentrations)
-           (let sample_conc ((rng, samples): (E.rng, []R.t)) (conc: R.t) =
-              let (rng, a) = gamma_dist.rand {concentration=conc, rate=R.f32 1.0} rng
-              in (rng, concat samples [a])
-            in foldl sample_conc (rng, []) concentrations)
+           (let (rngs, as) = map (\(rng, conc) -> gamma_dist.rand {concentration=conc, rate=R.f32 1.0} rng)
+                                 (zip (E.split_rng (length concentrations) rng) concentrations) |> unzip
+            in (E.join_rng rngs, as))
 }
 
 module beta_distribution (R: real) (E: rng_engine):

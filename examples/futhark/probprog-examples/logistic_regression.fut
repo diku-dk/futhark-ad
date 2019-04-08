@@ -4,8 +4,10 @@ import "optim"
 module T = tensor_ops f32
 
 module logistic_regression (ws_size: sized) : {
-  include grad_optimizable
   val data_len: i32
+  include grad_optimizable with param.t = [ws_size.len]f32
+                           with loss.t = f32
+                           with data = ([][data_len]f32, []f32)
   val logreg [m]: [ws_size.len]f32 -> [m][data_len]f32 -> [m]f32
 } = {
   let data_len: i32 = ws_size.len - 1
@@ -34,7 +36,7 @@ module logistic_regression (ws_size: sized) : {
 module logreg_m = logistic_regression { let len:i32 = 3 }
 module sgd = stochastic_gradient_descent logreg_m minstd_rand
 
-let main x =
+let main =
   let test_data: [5][2]f32 = [[13.0, 15.0],
                               [23.0, 12.0],
                               [15.0, 0.0],
@@ -42,4 +44,5 @@ let main x =
                               [12.0, -5.0]]
   let test_ys: [5]f32 = [1.0, 1.0, 0.0, 0.0, 0.0]
   let init_ws: [3]f32 = [-5.0, -5.0, 5.0]
-  in sgd.run {learning_rate=1.0} (minstd_rand.rng_from_seed [x]) init_ws (test_data, test_ys)
+  let (_, losses, ws) = sgd.run {learning_rate=1.0} (minstd_rand.rng_from_seed [1337]) init_ws (test_data, test_ys) 10
+  in (losses, ws)
