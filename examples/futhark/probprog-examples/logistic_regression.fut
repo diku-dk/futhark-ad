@@ -46,5 +46,5 @@ let main =
                               [12.0, -5.0]]
   let test_ys: [5]f64 = [1.0, 1.0, 0.0, 0.0, 0.0]
   let init_ws: [3]f64 = [-5.0, -5.0, 5.0]
-  let (_, losses, ws) = sgd.run {learning_rate=1.0} (minstd_rand.rng_from_seed [1337]) init_ws (test_data, test_ys) 10
+  let (_, losses, ws) = sgd.run {learning_rate=0.01} (minstd_rand.rng_from_seed [1337]) init_ws (test_data, test_ys) 10
   in (losses, ws, logreg_m.logreg ws test_data)
