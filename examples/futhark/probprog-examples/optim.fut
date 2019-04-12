@@ -46,9 +46,9 @@ module stochastic_gradient_descent (optable: grad_optimizable) (E : rng_engine):
   let default_options: options = {learning_rate=0.1}
 
   let run ({learning_rate}: options) (rng: rng) (p: param.t) (xs: data) (n_iters: i32) =
-  loop (rng, losses, p) = (rng, [optable.eval_loss p xs], p) for _i < n_iters do
+  loop (rng, losses, p) = (rng, replicate (1+n_iters) (optable.eval_loss p xs), p) for i < n_iters do
     let p = p param.- param.f32 learning_rate param.* optable.grad p xs
-    let losses = losses ++ [optable.eval_loss p xs]
+    let losses[i+1] = optable.eval_loss p xs
     in (rng, losses, p)
 
   let run' = run default_options
