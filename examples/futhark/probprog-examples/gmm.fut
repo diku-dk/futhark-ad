@@ -1,15 +1,16 @@
 import "../ad"
 
 module mk_gmm (P: real) = {
-  let logsumexp = map P.exp >-> P.sum >-> P.log
+  let logsumexp xs =
+    let mxs = P.maximum xs
+    in (map (\x -> P.(exp (x - mxs))) xs |> P.sum |> P.log) P.+ mxs
 
   let log_normalize x = P.(map (\y -> y-logsumexp x) x)
 
   let dotprod xs ys = map2 (P.*) xs ys |> P.sum
 
-  let normpdf x mu sigma = P.(exp(negate ((x-mu)**(i32 2))/(i32 2 * sigma**i32 2))/(sigma*sqrt(i32 2*pi)))
-
-  let logpdf x mu sigma = P.log (normpdf x mu sigma)
+  let logpdf x mu sigma = P.(negate ((log sigma) + f32 0.5 * (log (f32 2.0) + log pi)) +
+                             negate ((x-mu)**(f32 2.0))/(f32 2.0 * sigma**f32 2.0))
 
   let log_likelihood (ws: []P.t) (mus: []P.t) (sigmas: []P.t) (xs: []P.t) =
     let cluster_lls =
@@ -19,7 +20,7 @@ module mk_gmm (P: real) = {
     in map logsumexp (transpose cluster_lls) |> P.sum
 }
 
-module real = f64
+module real = f32
 type real = real.t
 module gmm = mk_gmm real
 module dual_real = mk_dual real
@@ -68,7 +69,7 @@ let main (n: i32) (xs: []f32) =
   let ws = [0.1,0.5,0.4]
   let mus = [0.1,0.2,0.3]
   let sigmas = [0.4,0.5,0.6]
-  let (_, losses, params') = sgd.run {learning_rate=0.0001} (minstd_rand.rng_from_seed [1337])
+  let (_, losses, params') = sgd.run {learning_rate=0.01} (minstd_rand.rng_from_seed [1337])
                                      (ws++mus++sigmas)
                                      xs
                                      n
