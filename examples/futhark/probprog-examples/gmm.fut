@@ -9,14 +9,24 @@ module mk_gmm (P: real) = {
 
   let dotprod xs ys = map2 (P.*) xs ys |> P.sum
 
+  let logsoftmax xs = 
+    let mxs = P.maximum xs
+    let xs = map (P.- mxs) xs
+    let sxs = logsumexp xs
+    in map (P.- sxs) xs
+
+  let pos xs = 
+    let eps = P.f32 0.01
+    in map (\x -> P.exp x P.+ eps) xs 
+
   let logpdf x mu sigma = P.(negate ((log sigma) + f32 0.5 * (log (f32 2.0) + log pi)) +
                              negate ((x-mu)**(f32 2.0))/(f32 2.0 * sigma**f32 2.0))
 
-  let log_likelihood (ws: []P.t) (mus: []P.t) (sigmas: []P.t) (xs: []P.t) =
+  let log_likelihood (logws: []P.t) (mus: []P.t) (sigmas: []P.t) (xs: []P.t) =
     let cluster_lls =
-      map3 (\w mu sigma ->
-              map (\x -> P.(w + logpdf x mu sigma)) xs)
-           ws mus sigmas
+      map3 (\logw mu sigma ->
+              map (\x -> P.(logw + logpdf x mu sigma)) xs)
+           logws mus sigmas
     in map logsumexp (transpose cluster_lls) |> P.sum
 }
 
@@ -52,10 +62,10 @@ module gmm_grad : grad_optimizable with param.t = [nine.len]real
   type data = []real
 
   let eval_loss (param: param.t) (xs: data): loss.t =
-    -gmm.log_likelihood param[0:3] param[3:6] param[6:9] xs
+    -gmm.log_likelihood (gmm.logsoftmax param[0:3]) param[3:6] (gmm.pos param[6:9]) xs
 
   let grad (param: param.t) (xs: data): param.t =
-    let (ws, mus, sigmas) = diff param[0:3] param[3:6] param[6:9] xs
+    let (ws, mus, sigmas) = diff (gmm.logsoftmax param[0:3]) param[3:6] (gmm.pos param[6:9]) xs
     in map real.negate (ws ++ mus ++ sigmas)
 }
 
@@ -66,15 +76,15 @@ module sgd = stochastic_gradient_descent gmm_grad minstd_rand
 
 let main (n: i32) (xs: []f32) =
   let xs = map real.f32 xs
-  let ws = [0.1,0.5,0.4]
+  let ws = map real.log [0.1,0.5,0.4]
   let mus = [0.1,0.2,0.3]
   let sigmas = [0.4,0.5,0.6]
-  let (_, losses, params') = sgd.run {learning_rate=0.01} (minstd_rand.rng_from_seed [1337])
+  let (_, losses, params') = sgd.run {learning_rate=0.001} (minstd_rand.rng_from_seed [1337])
                                      (ws++mus++sigmas)
                                      xs
                                      n
-  let ws' = params'[0:3]
+  let ws' = gmm.logsoftmax params'[0:3]
   let mus' = params'[3:6]
-  let sigmas' = params'[6:9]
-  in (losses, params', gmm.log_likelihood ws' mus' sigmas' xs)
+  let sigmas' = gmm.pos params'[6:9]
+  in (losses, ws', mus', sigmas', gmm.log_likelihood ws' mus' sigmas' xs)
 
