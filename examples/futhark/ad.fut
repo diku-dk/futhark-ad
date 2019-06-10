@@ -88,6 +88,9 @@ module mk_dual(T: real): {
   -- val atan2: t -> t -> t
   -- I know this isn't right but can't figure it out now
   let atan2 (x,_) (y,_) = inject (T.atan2 x y)
+  -- I have no idea how to differentiate the gamma funtions.
+  let gamma (x, _) = inject (T.gamma x)
+  let lgamma (x, _) = inject (T.lgamma x)
 
   -- val log: t -> t
   let log (x, x') = T.( (log x, x' / x) )

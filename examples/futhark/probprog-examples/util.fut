@@ -174,6 +174,8 @@ module arr (R: real) (S: sized): real with t = [S.len]R.t = {
   let acos = map R.acos
   let atan = map R.atan
   let atan2 = map2 R.atan2
+  let gamma = map R.gamma
+  let lgamma = map R.lgamma
   let log = map R.log
   let log2 = map R.log2
   let log10 = map R.log10
