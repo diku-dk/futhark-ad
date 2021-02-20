@@ -36,6 +36,7 @@ module mk_dual(T: real): {
   let (x,x') * (y,y') = T.( (x * y, x' * y + x * y')  )
 
   let (x,x') / (y,y') = T.( (x / y, (x' * y - x * y') / y ** (i32 2)) )
+  let (x,x') % (y,y') = T.( (x % y, (x' * y - x * y') % y ** (i32 2)) ) -- WRONG
 
   let (x,x') ** (y,y') = T.( (x / y, (x' * y - x * y') / y ** (i32 2)) )
 
@@ -45,7 +46,8 @@ module mk_dual(T: real): {
   let (x,_) <= (y,_) = T.( x <= y )
   let (x,_) >= (y,_) = T.( x >= y )
   let (x,_) != (y,_) = T.( x != y )
-  let negate (x,x') = T.( (negate x, negate x') )
+  let neg (x,x') = T.( (neg x, neg x') )
+  let recip (x,x') = (T.recip x, T.(neg (x'/(x*x))))
   let max x y = if x >= y then x else y
   let min x y = if x <= y then x else y
   let abs (x,x') = (T.abs x, x')
@@ -65,7 +67,6 @@ module mk_dual(T: real): {
   -- val from_fraction: i32 -> i32 -> t
   let from_fraction x y = inject (T.from_fraction x y)
   -- val to_i32: t -> i32
-  let to_i32 (x,_) = T.to_i32 x
   let to_i64 (x,_) = T.to_i64 x
   let to_f64 (x,_) = T.to_f64 x
 
@@ -75,14 +76,14 @@ module mk_dual(T: real): {
   -- val exp: t -> t
   let exp (x,x') = T.( (exp x, x' * exp x) )
   -- val cos: t -> t
-  let cos (x, x') = T.( (cos x, negate x' * sin x) )
+  let cos (x, x') = T.( (cos x, neg x' * sin x) )
   -- val sin: t -> t
   let sin (x, x') = T.( (sin x, x' * cos x) )
   let tan x = sin x / cos x
   -- val asin: t -> t
   let asin (x, x') = T.( (asin x, x' / (sqrt (i32 1 - x ** i32 2))) )
   -- val acos: t -> t1
-  let acos (x, x') = T.( (acos x, negate x' / (sqrt (i32 1 - x ** i32 2)))  )
+  let acos (x, x') = T.( (acos x, neg x' / (sqrt (i32 1 - x ** i32 2)))  )
   -- val atan: t -> t
   let atan (x, x') = T.( (atan x, x' / (i32 1 + x ** i32 2)) )
   -- val atan2: t -> t -> t
@@ -120,6 +121,8 @@ module mk_dual(T: real): {
   let pi = inject T.pi
   -- val e: t
   let e = inject T.e
+
+  let lerp v0 v1 t = v0 + t * (v1 - v0)
 
   let get_deriv (_,x') = x'
   let set_deriv (x,_) x'= (x,x')

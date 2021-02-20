@@ -3,7 +3,7 @@ import "lib/github.com/diku-dk/cpprandom/random"
 module type optimizable = {
   module param: real
   module loss: real
-  type data
+  type~ data
   val eval_loss: param.t -> data -> loss.t
 }
 
@@ -27,8 +27,8 @@ module type optimizer = {
   type options
   val default_options: options
 
-  val run: options -> rng -> param.t -> data -> i32 -> (rng, []loss.t, param.t)
-  val run': rng -> param.t -> data -> i32 -> (rng, []loss.t, param.t)
+  val run: options -> rng -> param.t -> data -> i64 -> (rng, []loss.t, param.t)
+  val run': rng -> param.t -> data -> i64 -> (rng, []loss.t, param.t)
 }
 
 module stochastic_gradient_descent (optable: grad_optimizable) (E : rng_engine):
@@ -39,17 +39,18 @@ module stochastic_gradient_descent (optable: grad_optimizable) (E : rng_engine):
             with options = {learning_rate: f32} = {
   module param = optable.param
   module loss = optable.loss
-  type data = optable.data
+  type~ data = optable.data
   type rng = E.rng
 
   type options = {learning_rate: f32}
   let default_options: options = {learning_rate=0.1}
 
-  let run ({learning_rate}: options) (rng: rng) (p: param.t) (xs: data) (n_iters: i32) =
-  loop (rng, losses, p) = (rng, replicate (1+n_iters) (optable.eval_loss p xs), p) for i < n_iters do
-    let p = p param.- param.f32 learning_rate param.* optable.grad p xs
-    let losses[i+1] = optable.eval_loss p xs
-    in (rng, losses, p)
+  let run ({learning_rate}: options) (rng: rng) (p: param.t) (xs: data) (n_iters: i64) =
+    let m = 1+n_iters
+    in loop (rng, losses, p) = (rng, replicate m (optable.eval_loss p xs), p) for i < n_iters do
+       let p = p param.- param.f32 learning_rate param.* optable.grad p xs
+       let losses[i+1] = optable.eval_loss p xs
+       in (rng, losses, p)
 
   let run' = run default_options
 }
@@ -59,21 +60,21 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
             with rng = E.rng
             with param.t = optable.param.t
             with loss.t = optable.loss.t
-            with options = {swarm_size: i32, acceleration_rate: f32,
+            with options = {swarm_size: i64, acceleration_rate: f32,
                             local_learning_rate: f32, global_learning_rate: f32} =
 {
   module param = optable.param
   module loss = optable.loss
   module unif_dist = uniform_real_distribution param E
 
-  type data = optable.data
+  type~ data = optable.data
   type rng = E.rng
 
-  type options = {swarm_size: i32, acceleration_rate: f32, local_learning_rate: f32, global_learning_rate: f32}
+  type options = {swarm_size: i64, acceleration_rate: f32, local_learning_rate: f32, global_learning_rate: f32}
   let default_options: options = {swarm_size=100,acceleration_rate=(-0.5),local_learning_rate=0.5,global_learning_rate=3.0}
 
-  let sample (rng: rng) (lower: param.t) (upper: param.t) (n: i32): (rng, []param.t) =
-    let (rngs, vals) = E.split_rng n rng 
+  let sample (rng: rng) (lower: param.t) (upper: param.t) (n: i64): (rng, []param.t) =
+    let (rngs, vals) = E.split_rng n rng
                      |> map (unif_dist.rand (lower, upper))
                      |> unzip
     in (E.join_rng rngs, vals)
@@ -82,10 +83,10 @@ module particle_swarm (optable: bound_optimizable) (E: rng_engine):
     let argmin_op p p' = if lf p loss.< lf p' then p else p'
     in reduce argmin_op ps[0] ps
 
-  let run ({swarm_size,acceleration_rate,local_learning_rate,global_learning_rate}:options) (rng: rng) (p: param.t) (xs: data) (n_iters: i32) =
+  let run ({swarm_size,acceleration_rate,local_learning_rate,global_learning_rate}:options) (rng: rng) (p: param.t) (xs: data) (n_iters: i64) =
     let (rng, ps) = sample rng optable.param_lower optable.param_upper swarm_size
     let param_range = optable.param_upper param.- optable.param_lower
-    let (rng, vs) = sample rng (param.negate param_range) param_range swarm_size
+    let (rng, vs) = sample rng (param.neg param_range) param_range swarm_size
     let gl = p
     let (rng, losses, _, _, gl, _) =
       loop (rng, losses, ps, bps, gl, vs) = (rng, [], ps, ps, gl, vs) for _i < n_iters do

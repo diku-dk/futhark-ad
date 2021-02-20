@@ -41,12 +41,12 @@ module dirichlet_distribution (R: real) (E: rng_engine) = {
   module num = R
   module gamma_dist = gamma_distribution R E
 
-  type distribution = {concentrations: []R.t}
+  type distribution [n] = {concentrations: [n]R.t}
 
-  let rand ({concentrations}: distribution) (rng: E.rng): (E.rng, []R.t) =
+  let rand [n] ({concentrations}: distribution [n]) (rng: E.rng): (E.rng, [n]R.t) =
     assert (length concentrations > 0 && all (R.> R.f32 0.0) concentrations)
            (let (rngs, as) = map (\(rng, conc) -> gamma_dist.rand {concentration=conc, rate=R.f32 1.0} rng)
-                                 (zip (E.split_rng (length concentrations) rng) concentrations) |> unzip
+                                 (zip (E.split_rng n rng) concentrations) |> unzip
             in (E.join_rng rngs, as))
 }
 
@@ -69,13 +69,13 @@ module tensor_ops (R: real): {
     val sigmoid: R.t -> R.t
     val dotv [n][m]: [m][n]R.t -> [n]R.t -> [m]R.t
     val dotm [n][m][o]: [n][m]R.t -> [m][o]R.t -> [n][o]R.t
-    val logsumexp: []R.t -> R.t
+    val logsumexp [n]: [n]R.t -> R.t
     val log_fact: R.t -> R.t
     val log_binomial: R.t -> R.t -> R.t
     val log_gammafn: R.t -> R.t
     val log_betafn: R.t -> R.t -> R.t
 } = {
-    let sigmoid (r: R.t): R.t = R.f32 1.0 R./ (R.f32 1.0 R.+ R.exp (R.negate r))
+    let sigmoid (r: R.t): R.t = R.f32 1.0 R./ (R.f32 1.0 R.+ R.exp (R.neg r))
 
     let dotv [n][m] (yss: [m][n]R.t) (xs: [n]R.t): [m]R.t =
       map (\ys -> reduce (R.+) (R.f32 0.0) (map2 (R.*) xs ys)) yss
@@ -93,8 +93,8 @@ module tensor_ops (R: real): {
     let log_fact (r: R.t): R.t =
       assert (r R.> R.f32 0.0 && R.floor r R.== r)
              (if r R.< R.f32 10.0 then
-                R.log (loop n = R.f32 1.0 for i < R.to_i32 r do
-                         (R.i32 i R.+ R.f32 1.0) R.* n)
+                R.log (loop n = R.f32 1.0 for i < R.to_i64 r do
+                         (R.i64 i R.+ R.f32 1.0) R.* n)
               else r R.* R.log r R.- r R.+ R.f32 0.5 R.* R.log r R.+ R.f32 0.5 R.* R.log (R.f32 2.0 R.* R.pi) )
 
     let log_binomial (n: R.t) (k: R.t): R.t =
@@ -111,7 +111,7 @@ module tensor_ops (R: real): {
         let sum =
           loop sum = R.f32 0.0 for i < length lct do
             let j = (length lct - 1) - i
-            in sum R.+ lct[j] R./ (z R.+ R.i32 j)
+            in sum R.+ lct[j] R./ (z R.+ R.i64 j)
         in R.f32 0.5 R.* R.log (R.f32 2.0 R.* R.pi) R.+ R.log sum R.- base R.+ (R.log base R.* (z R.+ R.f32 0.5))
       in assert (z R.> R.f32 0) (if z R.< R.f32 0.5
                                  then
@@ -123,7 +123,7 @@ module tensor_ops (R: real): {
 }
 
 module type sized = {
-  val len: i32
+  val len: i64
 }
 
 module arr (R: real) (S: sized): real with t = [S.len]R.t = {
@@ -143,6 +143,7 @@ module arr (R: real) (S: sized): real with t = [S.len]R.t = {
   let (-) = map2 (R.-)
   let (*) = map2 (R.*)
   let (/) = map2 (R./)
+  let (%) = map2 (R.%)
   let (**) = map2 (R.**)
   let to_i32 (_xs: t): i32 = assert false (- 1)
   let to_i64 (_xs: t): i64 = assert false (- 1)
@@ -153,29 +154,39 @@ module arr (R: real) (S: sized): real with t = [S.len]R.t = {
   let (<=) xs ys = map2 (R.<=) xs ys |> reduce (&&) true
   let (>=) xs ys = map2 (R.>=) xs ys |> reduce (&&) true
   let (!=) xs ys = map2 (R.!=) xs ys |> reduce (||) false
-  let negate = map R.negate
+  let neg = map R.neg
+  let recip = map R.recip
   let max = map2 R.max
   let min = map2 R.min
   let abs = map R.abs
   let sgn = map R.sgn
   let highest = replicate S.len R.highest
   let lowest = replicate S.len R.lowest
-  let sum = map R.sum
-  let product = map R.product
-  let maximum = map R.maximum
-  let minimum = map R.minimum
+  let sum = transpose >-> map R.sum
+  let product = transpose >-> map R.product
+  let maximum = transpose >-> map R.maximum
+  let minimum = transpose >-> map R.minimum
   let from_fraction n d = replicate S.len (R.from_fraction n d)
   let sqrt = map R.sqrt
   let exp = map R.exp
   let cos = map R.cos
+  let cosh = map R.cosh
   let sin = map R.sin
+  let sinh = map R.sinh
   let tan = map R.tan
+  let tanh = map R.tanh
   let asin = map R.asin
+  let asinh = map R.asinh
   let acos = map R.acos
+  let acosh = map R.acosh
   let atan = map R.atan
+  let atanh = map R.atanh
   let atan2 = map2 R.atan2
   let gamma = map R.gamma
   let lgamma = map R.lgamma
+  let lerp = map3 R.lerp
+  let mad = map3 R.mad
+  let fma = map3 R.fma
   let log = map R.log
   let log2 = map R.log2
   let log10 = map R.log10
