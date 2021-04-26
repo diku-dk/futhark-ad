@@ -145,14 +145,15 @@ entry calculate_jacobian [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64)
   -- Convert to matrix format.
   let dcams =
     tabulate_2d (2*p) 11
-             (\i j -> let ((dcam1, dcam2), _, _) = grads[i/2]
-                      in if (i % 2 == 0) then dcam1[j] else dcam2[j])
+                (\i j -> let ((dcam1, dcam2), _, _) = grads[i/2]
+                         in if (i % 2 == 0) then dcam1[j] else dcam2[j])
 
-  let dX = tabulate (2*p)
-                          (\i -> let (_, (dX1, dX2), _) = grads[i/2]
-                                 in if (i % 2 == 0)
-                                    then [dX1.x,dX1.y,dX1.z]
-                                    else [dX2.x,dX2.y,dX2.z])
+  let dX =
+    tabulate (2*p)
+             (\i -> let (_, (dX1, dX2), _) = grads[i/2]
+                    in if (i % 2 == 0)
+                       then [dX1.x,dX1.y,dX1.z]
+                       else [dX2.x,dX2.y,dX2.z])
   let drdw =
     tabulate (2*p)
              (\i -> let (_, _, (dw1, dw2)) = grads[i/2]
