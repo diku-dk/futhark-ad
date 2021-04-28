@@ -90,7 +90,6 @@ let compute_zach_weight_error w : f64 =
   1 - w*w
 
 let ba_objective [n][m][p] (cams: [n]cam) (X: [m]point_3d) (w: [p]f64) (obs:[p][2]i32) (feat:[]point_2d) =
-  let p = length w
   let reproj_err =
     tabulate p (\i -> compute_reproj_err cams[obs[i,0]]
                                          X[obs[i,1]]
@@ -147,7 +146,7 @@ entry calculate_objective [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64
 -- The packing code is derived from
 -- https://github.com/tomsmeding/ADBench/blob/157260330293a46068593357cebc0f71f203750b/tools/Accelerate/src/BA.hs#L85-L138
 -- by Tom Smeding.
-entry calculate_jacobian [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64) (obs:[p][2]i32) (feat:[][2]f64) =
+entry calculate_jacobian [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64) (obs:[p][2]i32) (feat:[p][2]f64) =
   let cams = map unpack_cam cams
   let X = map (\p -> {x=p[0],y=p[1],z=p[2]}) X
   let feat = map (\p -> {x=p[0],y=p[1]}) feat
@@ -177,7 +176,10 @@ entry calculate_jacobian [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64)
   let dwdw = map (grad compute_zach_weight_error) w
 
   -- Pack sparse Jacobian.
-  let rows = map (*15) (iota (2*p)) ++ map (+(2*p*15)) (iota (p+1))
+  let p32 = i32.i64 p
+  let n32 = i32.i64 n
+  let m32 = i32.i64 m
+  let rows = map (*15) (0..<2*p32) ++ map (+(2*i32.i64 p*15)) (0..<p32+1)
   let colsvals =
     tabulate (2*p*15)
              (\i -> let obsi = i / (2*15)
@@ -185,10 +187,10 @@ entry calculate_jacobian [n][m][p] (cams: [n][11]f64) (X: [m][3]f64) (w: [p]f64)
                     let (ci, pi) = (i64.i32 obs[obsi,0], i64.i32 obs[obsi,1])
                     let j = i % 15
                     in if j < 11
-                       then (11*ci+j, dcams valouti j)
+                       then (i32.i64 (11*ci+j), dcams valouti j)
                        else if j < 14
-                       then (11*n+3*pi+j-11, dX valouti (j-11))
-                       else (11*n+3*m+obsi, drdw valouti))
-             ++ tabulate p (\i -> (11*n+3*m+i, dwdw[i]))
+                       then (11*n32+3*i32.i64 pi+i32.i64 j-11, dX valouti (j-11))
+                       else (11*n32+3*m32+i32.i64 obsi, drdw valouti))
+             ++ tabulate p (\i -> (11*n32+3*m32+i32.i64 i, dwdw[i]))
 
   in (rows, map (.0) colsvals, map (.1) colsvals)
