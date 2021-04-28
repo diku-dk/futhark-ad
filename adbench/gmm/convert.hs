@@ -37,5 +37,6 @@ main = do
   case args of
     [file] -> do
       s <- readFile file
-      writeFile file $ process s
+      let file_name = reverse $ snd $ break (== '.') $ reverse file
+      writeFile (file_name ++ "in") $ process s
     _ -> putStrLn "Wrong usage."
