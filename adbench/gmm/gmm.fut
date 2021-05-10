@@ -58,9 +58,6 @@ let gmmObjective [m][k] (alphas: [m]f64) (means: [m][k]f64) (icf: [m][k]f64) (x:
                         ) qsAndSums (alphasAndMeans :> [m](f64, [k]f64)))
     in constant + slse  - f64.i64 n * logsumexp alphas + logWishartPrior qsAndSums wishartGamma wishartM d
 									 
-let gmmObjective_ (ins: ([]f64,[][]f64, [][]f64,[][]f64, f64 , i64)) =
-  gmmObjective ins.0 ins.1 ins.2 ins.3 ins.4 ins.5
-									 
 let grad f x = vjp f x 1f64
 
 entry calculate_objective [m][k]
@@ -81,4 +78,4 @@ entry calculate_jacobian [m] [k]
 			 (icf: [m][k]f64)
 			 (x: [m][k]f64)
 			 (w_gamma: f64) (w_m: i64) =
-    grad gmmObjective_ (alphas, means, icf, x, w_gamma, w_m)
+  grad (\(a, m, icf, x) -> gmmObjective a m icf x w_gamma w_m) (alphas, means, icf, x)
