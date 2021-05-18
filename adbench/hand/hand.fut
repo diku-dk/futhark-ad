@@ -1,74 +1,127 @@
-import "lib/github.com/athas/vector/vspace"
+import "lib/github.com/diku-dk/linalg/linalg"
 
-module v3d = mk_vspace_3d f64
-type point_3d = v3d.vector
-let point_3d a: point_3d = {x=a[0], y=a[1], z=a[2]}
+module linalg_f64 = mk_linalg f64
 
-import "lib/github.com/athas/vector/vector"
+let matmul = linalg_f64.matmul
+let matadd = map2 (map2 (f64.+))
 
-module vec1 = vector_1
-module vec2 = cat_vector vec1 vec1
-module vec3 = cat_vector vec2 vec1
-type vec3 'a = vec3.vector a
+let identity n = tabulate_2d n n (\i j -> f64.bool(i == j))
 
-type mat3x3 = vec3 point_3d
-
-let mat3x3_row i = vec3.get i
-
-let mat3x3_col (i: i32) (A: mat3x3) =
-  match i
-  case 0 -> point_3d [(vec3.get 0 A).x, (vec3.get 1 A).x, (vec3.get 2 A).x]
-  case 1 -> point_3d [(vec3.get 0 A).y, (vec3.get 1 A).y, (vec3.get 2 A).y]
-  case _ -> point_3d [(vec3.get 0 A).z, (vec3.get 1 A).z, (vec3.get 2 A).z]
-
-let mat3x3 (A: [3][3]f64) : *mat3x3 =
-  vec3.from_array
-  (take vec3.length [point_3d A[0], point_3d A[1], point_3d A[2]])
-
-let mul3x3 (A: mat3x3) (B: mat3x3) : *mat3x3 =
-  mat3x3 [[v3d.dot (mat3x3_row 0 A) (mat3x3_col 0 B),
-           v3d.dot (mat3x3_row 0 A) (mat3x3_col 1 B),
-           v3d.dot (mat3x3_row 0 A) (mat3x3_col 2 B)],
-          [v3d.dot (mat3x3_row 1 A) (mat3x3_col 0 B),
-           v3d.dot (mat3x3_row 1 A) (mat3x3_col 1 B),
-           v3d.dot (mat3x3_row 1 A) (mat3x3_col 2 B)],
-          [v3d.dot (mat3x3_row 2 A) (mat3x3_col 0 B),
-           v3d.dot (mat3x3_row 2 A) (mat3x3_col 1 B),
-           v3d.dot (mat3x3_row 2 A) (mat3x3_col 2 B)]]
-
-let add3x3 (A: mat3x3) (B: mat3x3) : mat3x3 =
-  vec3.map2 (v3d.+) A B
-
-let identity3x3 : mat3x3 =
-  mat3x3 [[1,0,0], [0,1,0], [0,0,1]]
-
-let angle_axis_to_rotation_matrix (angle_axis: point_3d) : mat3x3 =
-  let n = v3d.norm angle_axis
-  in if n < 0.0001 then identity3x3 else
-     let x = angle_axis.x / n
-     let y = angle_axis.y / n
-     let z = angle_axis.z / n
+let angle_axis_to_rotation_matrix (angle_axis: [3]f64) : [3][3]f64 =
+  let n = f64.sqrt (angle_axis[0]**2+angle_axis[1]**2+angle_axis[2]**2)
+  in if n < 0.0001 then identity 3 else
+     let x = angle_axis[0] / n
+     let y = angle_axis[1] / n
+     let z = angle_axis[2] / n
      let s = f64.sin n
      let c = f64.cos n
-     in mat3x3 [[x * x + (1 - x * x) * c,
-                 x * y * (1 - c) - z * s,
-                 x * z * (1 - c) + y * s],
-                [x * y * (1 - c) + z * s,
-                 y * y + (1 - y * y) * c,
-                 y * z * (1 - c) - x * s],
-                [x * z * (1 - c) - y * s,
-                 z * y * (1 - c) + x * s,
-                 z * z + (1 - z * z) * c]]
+     in [[x * x + (1 - x * x) * c,
+          x * y * (1 - c) - z * s,
+          x * z * (1 - c) + y * s],
+         [x * y * (1 - c) + z * s,
+          y * y + (1 - y * y) * c,
+          y * z * (1 - c) - x * s],
+         [x * z * (1 - c) - y * s,
+          z * y * (1 - c) + x * s,
+          z * z + (1 - z * z) * c]]
 
-let apply_global_transform (pose_params: []point_3d) (positions: mat3x3) =
+let apply_global_transform [m] (pose_params: [][3]f64) (positions: [3][m]f64) =
   let R = angle_axis_to_rotation_matrix pose_params[0]
-          |> vec3.map (v3d.* pose_params[1])
-  in (R `mul3x3` positions) `add3x3`
-     mat3x3 (transpose (replicate 3 [pose_params[2].x, pose_params[2].y, pose_params[2].z]))
+          |> map (map2 (*) pose_params[1])
+  in (R `matmul` positions) `matadd`
+     transpose (replicate m [pose_params[2,0], pose_params[2,1], pose_params[2,2]])
 
-let relatives_to_absolutes [n] (relatives: []mat3x3) (parents: [n]i64) : [n]mat3x3 =
+let relatives_to_absolutes [n] (relatives: [][4][4]f64) (parents: [n]i64) : [n][4][4]f64 =
   -- Initial value does not matter (I think).
-  loop absolutes = replicate n identity3x3 for i < n do
-    if parents[i] == -1
-    then absolutes with [i] = relatives[i]
-    else absolutes with [i] = (absolutes[parents[i]] `mul3x3` relatives[i])
+  loop absolutes = replicate n (identity 4)
+  for (relative, parent, i) in zip3 relatives parents (iota n) do
+    if parent == -1
+    then absolutes with [i] = relative
+    else absolutes with [i] = copy (absolutes[parent] `matmul` relative)
+
+let euler_angles_to_rotation_matrix (xzy: [3]f64) : [4][4]f64 =
+  let tx = xzy[0]
+  let ty = xzy[2]
+  let tz = xzy[1]
+  let costx = f64.cos(tx)
+  let sintx = f64.sin(tx)
+  let costy = f64.cos(ty)
+  let sinty = f64.sin(ty)
+  let costz = f64.cos(tz)
+  let sintz = f64.sin(tz)
+  in [[costy * costz,
+       -costx * sintz + sintx * sinty * costz,
+       sintx * sintz + costx * sinty * costz,
+       0],
+      [costy * sintz,
+       costx * costz + sintx * sinty * sintz,
+       -sintx * costz + costx * sinty * sintz,
+       0],
+      [-sinty,
+       sintx * costy,
+       costx * costy,
+       0],
+      [0,
+       0,
+       0,
+       1]]
+
+type~ hand_model [num_bones][n][m] =
+  { parents: []i64,
+    base_relatives: [][][]f64,
+    inverse_base_absolutes: [][][]f64,
+    base_positions: [n][m]f64,
+    weights: [num_bones][]f64,
+    triangles: [][]i64,
+    is_mirrored: bool
+  }
+
+let get_posed_relatives [num_bones] (model: hand_model [num_bones][][]) (pose_params: [][3]f64) =
+  let offset = 3
+  let f i =
+    matmul model.base_relatives[i]
+           (euler_angles_to_rotation_matrix pose_params[i+offset])
+  in tabulate num_bones f
+
+let get_skinned_vertex_positions [num_bones][n][m]
+                                 (model: hand_model [num_bones][n][m])
+                                 (pose_params: [][3]f64)
+                                 (apply_global: bool) =
+  let relatives = get_posed_relatives model pose_params
+  let absolutes = relatives_to_absolutes relatives model.parents
+  let transforms = map2 matmul absolutes model.inverse_base_absolutes
+  let base_positions = model.base_positions
+  let positions =
+    loop pos = tabulate_2d 3 m (\_ _ -> 0)
+    for (transform, weights) in zip transforms model.weights
+    do map2 (map2 (+))
+            pos
+            (transform[0:3] `matmul` base_positions |> map (map2 (*) weights))
+
+  let positions = if model.is_mirrored
+                  then positions with [0] = map f64.neg positions[0]
+                  else positions
+
+  in if apply_global
+     then apply_global_transform pose_params positions
+     else positions
+
+let to_pose_params (theta: []f64) (num_bones: i64) : [][]f64 =
+  let n = 3 + num_bones
+  let num_fingers = 5
+  let cols = 5 + num_fingers * 4
+  in tabulate n (\i -> match i
+                       case 0 -> take 3 theta[0:]
+                       case 1 -> [1,1,1]
+                       case 2 -> take 3 theta[3:]
+                       case j ->
+                         if j >= cols || j == 3 || j % 4 == 0 then [0,0,0]
+                         else if j % 4 == 1 then [theta[j + 1], theta[j + 2], 0]
+                         else [theta[j + 2], 0, 0])
+
+entry calculate_objective [num_bones] (model: hand_model [num_bones][][]) (correspondences: []i64) (points: [][]f64) (theta: []f64) : []f64 =
+    let pose_params = to_pose_params theta num_bones
+    let vertex_positions = get_skinned_vertex_positions model pose_params true
+    in map2 (\point correspondence ->
+               map2 (-) point vertex_positions[:, correspondence])
+            points correspondences |> flatten
