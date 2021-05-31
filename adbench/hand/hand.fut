@@ -25,19 +25,19 @@ let angle_axis_to_rotation_matrix (angle_axis: [3]f64) : [3][3]f64 =
           z * y * (1 - c) + x * s,
           z * z + (1 - z * z) * c]]
 
-let apply_global_transform [m] (pose_params: [][3]f64) (positions: [3][m]f64) =
+let apply_global_transform [n][m] (pose_params: [n][3]f64) (positions: [3][m]f64) : [3][m]f64 =
   let R = angle_axis_to_rotation_matrix pose_params[0]
           |> map (map2 (*) pose_params[1])
   in (R `matmul` positions) `matadd`
      transpose (replicate m [pose_params[2,0], pose_params[2,1], pose_params[2,2]])
 
-let relatives_to_absolutes [n] (relatives: [][4][4]f64) (parents: [n]i64) : [n][4][4]f64 =
-  -- Initial value does not matter (I think).
-  loop absolutes = replicate n (identity 4)
+let relatives_to_absolutes [n] (relatives: [n][4][4]f64) (parents: [n]i32) : [n][4][4]f64 =
+  -- Initial value does not matter.
+  loop absolutes : *[n][4][4]f64 = replicate n (identity 4)
   for (relative, parent, i) in zip3 relatives parents (iota n) do
-    if parent == -1
-    then absolutes with [i] = relative
-    else absolutes with [i] = copy (absolutes[parent] `matmul` relative)
+    absolutes with [i] = if parent == -1
+                         then relative
+                         else copy (absolutes[parent] `matmul` relative)
 
 let euler_angles_to_rotation_matrix (xzy: [3]f64) : [4][4]f64 =
   let tx = xzy[0]
@@ -66,25 +66,25 @@ let euler_angles_to_rotation_matrix (xzy: [3]f64) : [4][4]f64 =
        0,
        1]]
 
-type~ hand_model [num_bones][n][m] =
-  { parents: []i64,
-    base_relatives: [][][]f64,
-    inverse_base_absolutes: [][][]f64,
-    base_positions: [n][m]f64,
-    weights: [num_bones][]f64,
-    triangles: [][]i64,
+type~ hand_model [num_bones][M] =
+  { parents: [num_bones]i32,
+    base_relatives: [num_bones][4][4]f64,
+    inverse_base_absolutes: [num_bones][4][4]f64,
+    weights: [num_bones][M]f64,
+    base_positions: [4][M]f64,
+    triangles: [][3]i32,
     is_mirrored: bool
   }
 
-let get_posed_relatives [num_bones] (model: hand_model [num_bones][][]) (pose_params: [][3]f64) =
+let get_posed_relatives [num_bones][M] (model: hand_model [num_bones][M]) (pose_params: [][3]f64) =
   let offset = 3
   let f i =
     matmul model.base_relatives[i]
            (euler_angles_to_rotation_matrix pose_params[i+offset])
   in tabulate num_bones f
 
-let get_skinned_vertex_positions [num_bones][n][m]
-                                 (model: hand_model [num_bones][n][m])
+let get_skinned_vertex_positions [num_bones][M]
+                                 (model: hand_model [num_bones][M])
                                  (pose_params: [][3]f64)
                                  (apply_global: bool) =
   let relatives = get_posed_relatives model pose_params
@@ -92,11 +92,12 @@ let get_skinned_vertex_positions [num_bones][n][m]
   let transforms = map2 matmul absolutes model.inverse_base_absolutes
   let base_positions = model.base_positions
   let positions =
-    loop pos = tabulate_2d 3 m (\_ _ -> 0)
+    loop pos = tabulate_2d 3 M (\_ _ -> 0)
     for (transform, weights) in zip transforms model.weights
     do map2 (map2 (+))
             pos
-            (transform[0:3] `matmul` base_positions |> map (map2 (*) weights))
+            (transform[0:3] `matmul` base_positions
+             |> map (map2 (*) weights))
 
   let positions = if model.is_mirrored
                   then positions with [0] = map f64.neg positions[0]
@@ -119,9 +120,54 @@ let to_pose_params (theta: []f64) (num_bones: i64) : [][]f64 =
                          else if j % 4 == 1 then [theta[j + 1], theta[j + 2], 0]
                          else [theta[j + 2], 0, 0])
 
-entry calculate_objective [num_bones] (model: hand_model [num_bones][][]) (correspondences: []i64) (points: [][]f64) (theta: []f64) : []f64 =
-    let pose_params = to_pose_params theta num_bones
-    let vertex_positions = get_skinned_vertex_positions model pose_params true
-    in map2 (\point correspondence ->
-               map2 (-) point vertex_positions[:, correspondence])
-            points correspondences |> flatten
+entry calculate_objective [num_bones][N][M] [n_theta]
+  (parents: [num_bones]i32)
+  (base_relatives: [num_bones][4][4]f64)
+  (inverse_base_absolutes: [num_bones][4][4]f64)
+  (weights: [num_bones][M]f64)
+  (base_positions: [4][M]f64)
+  (triangles: [][3]i32)
+  (is_mirrored: bool)
+  (correspondences: [N]i32) (points: [3][N]f64) (theta: [n_theta]f64) : []f64 =
+  let model : hand_model [num_bones][M] =
+    { parents,
+      base_relatives,
+      inverse_base_absolutes,
+      weights,
+      base_positions,
+      triangles,
+      is_mirrored }
+  let pose_params = to_pose_params theta num_bones
+  let vertex_positions = get_skinned_vertex_positions model pose_params true
+  in map2 (\point correspondence ->
+             map2 (-) point vertex_positions[:, correspondence])
+          (transpose points) correspondences |> flatten
+
+-- ==
+-- entry: calculate_objective
+-- compiled input @ data/simple_small/hand1_t26_c100.in
+-- output @ data/simple_small/hand1_t26_c100.F
+-- compiled input @ data/simple_small/hand2_t26_c192.in
+-- compiled input @ data/simple_small/hand3_t26_c200.in
+-- compiled input @ data/simple_small/hand4_t26_c400.in
+-- compiled input @ data/simple_small/hand5_t26_c800.in
+-- compiled input @ data/simple_small/hand6_t26_c1600.in
+-- compiled input @ data/simple_small/hand7_t26_c3200.in
+-- compiled input @ data/simple_small/hand8_t26_c6400.in
+-- compiled input @ data/simple_small/hand9_t26_c12800.in
+-- compiled input @ data/simple_small/hand10_t26_c25600.in
+-- compiled input @ data/simple_small/hand11_t26_c51200.in
+-- compiled input @ data/simple_small/hand12_t26_c100000.in
+--
+-- compiled input @ data/simple_big/hand1_t26_c100.in
+-- compiled input @ data/simple_big/hand2_t26_c192.in
+-- compiled input @ data/simple_big/hand3_t26_c200.in
+-- compiled input @ data/simple_big/hand4_t26_c400.in
+-- compiled input @ data/simple_big/hand5_t26_c800.in
+-- compiled input @ data/simple_big/hand6_t26_c1600.in
+-- compiled input @ data/simple_big/hand7_t26_c3200.in
+-- compiled input @ data/simple_big/hand8_t26_c6400.in
+-- compiled input @ data/simple_big/hand9_t26_c12800.in
+-- compiled input @ data/simple_big/hand10_t26_c25600.in
+-- compiled input @ data/simple_big/hand11_t26_c51200.in
+-- compiled input @ data/simple_big/hand12_t26_c100000.in
