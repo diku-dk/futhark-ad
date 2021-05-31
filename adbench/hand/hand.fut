@@ -128,7 +128,7 @@ entry calculate_objective [num_bones][N][M] [n_theta]
   (base_positions: [4][M]f64)
   (triangles: [][3]i32)
   (is_mirrored: bool)
-  (correspondences: [N]i32) (points: [3][N]f64) (theta: [n_theta]f64) : []f64 =
+  (correspondences: [N]i32) (points: [3][N]f64) (theta: [n_theta]f64) : [N][3]f64 =
   let model : hand_model [num_bones][M] =
     { parents,
       base_relatives,
@@ -141,7 +141,7 @@ entry calculate_objective [num_bones][N][M] [n_theta]
   let vertex_positions = get_skinned_vertex_positions model pose_params true
   in map2 (\point correspondence ->
              map2 (-) point vertex_positions[:, correspondence])
-          (transpose points) correspondences |> flatten
+          (transpose points) correspondences
 
 -- ==
 -- entry: calculate_objective
