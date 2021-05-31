@@ -14,15 +14,19 @@ vectorize xs = "[" ++ intercalate ", " xs ++ "]"
 matrixize :: [[String]] -> String
 matrixize xss = "[" ++ intercalate ",\n" (map vectorize xss) ++ "]"
 
+mki64 :: String -> String
+mki64 = (++ "i64")
+
 process :: String -> String
 process s =
   intercalate "\n" $
-    [ unwords [d, k, n],
+    [ unwords $ map mki64 [d, k, n],
       alphas',
       means',
       icf',
       xs',
-      unwords wishart
+      let [w_g, w_m] = wishart
+       in w_g ++ " " ++ mki64 w_m
     ]
   where
     (means', icf', xs') = (matrixize means, matrixize icf, matrixize xs)
