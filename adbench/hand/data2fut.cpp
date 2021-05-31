@@ -215,17 +215,22 @@ void print_vec(const std::vector<T> &v) {
 }
 
 int main(int argc, char** argv) {
-  if (argc != 3) {
-    std::cerr << "Usage: " << argv[0] << " " << "<input_file> <model_dir>" << std::endl;
+  if (argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " " << "<complicated|simple> <INPUT FILE> <MODEL DIR>" << std::endl;
     return 1;
   }
 
-  const char *input_file = argv[1];
-  const char *model_dir = argv[2];
+  bool complicated = argv[1] == std::string("complicated");
+  const char *input_file = argv[2];
+  const char *model_dir = argv[3];
 
   HandInput input;
 
-  read_hand_instance(model_dir, input_file, &input.theta, &input.data, nullptr);
+  if (complicated) {
+    read_hand_instance(model_dir, input_file, &input.theta, &input.data, &input.us);
+  } else {
+    read_hand_instance(model_dir, input_file, &input.theta, &input.data, NULL);
+  }
 
   print_vec(input.data.model.parents); std::cout << std::endl;
   print_vec(input.data.model.base_relatives); std::cout << std::endl;

@@ -22,11 +22,11 @@ datadir="$ADBench/data/hand"
 mkdir -p data/simple_small
 for x in $datadir/simple_small/hand*.txt; do
     echo $x
-    ./data2fut "$x" "$datadir/simple_small/model/" | futhark dataset -b > data/simple_small/$(basename -s .txt $x).in
+    ./data2fut simple "$x" "$datadir/simple_small/model/" | futhark dataset -b > data/simple_small/$(basename -s .txt $x).in
 done
 
 mkdir -p data/simple_big
 for x in $datadir/simple_big/hand*.txt; do
     echo $x
-    ./data2fut "$x" "$datadir/simple_big/model/" | futhark dataset -b > data/simple_big/$(basename -s .txt $x).in
+    ./data2fut simple "$x" "$datadir/simple_big/model/" | futhark dataset -b > data/simple_big/$(basename -s .txt $x).in
 done

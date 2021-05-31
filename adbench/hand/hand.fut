@@ -120,7 +120,21 @@ let to_pose_params (theta: []f64) (num_bones: i64) : [][]f64 =
                          else if j % 4 == 1 then [theta[j + 1], theta[j + 2], 0]
                          else [theta[j + 2], 0, 0])
 
-entry calculate_objective [num_bones][N][M] [n_theta]
+let objective [num_bones][N][M]
+    (model: hand_model [num_bones][M])
+    (correspondences: [N]i32)
+    (points: [3][N]f64)
+    (theta: [26]f64) : [N][3]f64 =
+  let pose_params = to_pose_params theta num_bones
+  let vertex_positions = get_skinned_vertex_positions model pose_params true
+  in map2 (\point correspondence ->
+             map2 (-) point vertex_positions[:, correspondence])
+          (transpose points) correspondences
+
+-- All parameters up to and including 'is_mirrored' constitute the
+-- model.  Of the remaining three parameters, 'theta' is called 'p' in
+-- the paper.
+entry calculate_objective [num_bones][N][M]
   (parents: [num_bones]i32)
   (base_relatives: [num_bones][4][4]f64)
   (inverse_base_absolutes: [num_bones][4][4]f64)
@@ -128,7 +142,7 @@ entry calculate_objective [num_bones][N][M] [n_theta]
   (base_positions: [4][M]f64)
   (triangles: [][3]i32)
   (is_mirrored: bool)
-  (correspondences: [N]i32) (points: [3][N]f64) (theta: [n_theta]f64) : [N][3]f64 =
+  (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [N][3]f64 =
   let model : hand_model [num_bones][M] =
     { parents,
       base_relatives,
@@ -137,11 +151,29 @@ entry calculate_objective [num_bones][N][M] [n_theta]
       base_positions,
       triangles,
       is_mirrored }
-  let pose_params = to_pose_params theta num_bones
-  let vertex_positions = get_skinned_vertex_positions model pose_params true
-  in map2 (\point correspondence ->
-             map2 (-) point vertex_positions[:, correspondence])
-          (transpose points) correspondences
+  in objective model correspondences points theta
+
+entry calculate_jacobian [num_bones][N][M]
+  (parents: [num_bones]i32)
+  (base_relatives: [num_bones][4][4]f64)
+  (inverse_base_absolutes: [num_bones][4][4]f64)
+  (weights: [num_bones][M]f64)
+  (base_positions: [4][M]f64)
+  (triangles: [][3]i32)
+  (is_mirrored: bool)
+  (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [N][3][26]f64 =
+  let model : hand_model [num_bones][M] =
+    { parents,
+      base_relatives,
+      inverse_base_absolutes,
+      weights,
+      base_positions,
+      triangles,
+      is_mirrored }
+  in tabulate 26 (\i ->
+                    let theta' = replicate 26 0 with [i] = 1
+                    in jvp (objective model correspondences points) theta theta')
+     |> transpose |> map transpose
 
 -- ==
 -- entry: calculate_objective
