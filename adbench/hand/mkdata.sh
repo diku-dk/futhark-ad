@@ -13,7 +13,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-g++ data2fut.cpp -o data2fut -O3
+g++ data2fut.cpp -o data2fut -O3 -std=c++14
 
 ADBench=$1
 
