@@ -34,8 +34,10 @@ let apply_global_transform [n][m] (pose_params: [n][3]f64) (positions: [3][m]f64
 let relatives_to_absolutes [n] (relatives: [n][4][4]f64) (parents: [n]i32) : [n][4][4]f64 =
   -- Initial value does not matter.
   loop absolutes : *[n][4][4]f64 = replicate n (identity 4)
-  for (relative, parent, i) in zip3 relatives parents (iota n) do
-    absolutes with [i] = if parent == -1
+  for i < n do
+  let relative = relatives[i]
+  let parent = parents[i]
+  in absolutes with [i] = if parent == -1
                          then relative
                          else copy (absolutes[parent] `matmul` relative)
 
@@ -93,8 +95,10 @@ let get_skinned_vertex_positions [num_bones][M]
   let base_positions = model.base_positions
   let positions =
     loop pos = tabulate_2d 3 M (\_ _ -> 0)
-    for (transform, weights) in zip transforms model.weights
-    do map2 (map2 (+))
+    for i < num_bones
+    do let transform = transforms[i]
+       let weights = model.weights[i]
+       in map2 (map2 (+))
             pos
             (transform[0:3] `matmul` base_positions
              |> map (map2 (*) weights))
@@ -135,14 +139,14 @@ let objective [num_bones][N][M]
 -- model.  Of the remaining three parameters, 'theta' is called 'p' in
 -- the paper.
 entry calculate_objective [num_bones][N][M]
-  (parents: [num_bones]i32)
-  (base_relatives: [num_bones][4][4]f64)
-  (inverse_base_absolutes: [num_bones][4][4]f64)
-  (weights: [num_bones][M]f64)
-  (base_positions: [4][M]f64)
-  (triangles: [][3]i32)
-  (is_mirrored: bool)
-  (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [N][3]f64 =
+    (parents: [num_bones]i32)
+    (base_relatives: [num_bones][4][4]f64)
+    (inverse_base_absolutes: [num_bones][4][4]f64)
+    (weights: [num_bones][M]f64)
+    (base_positions: [4][M]f64)
+    (triangles: [][3]i32)
+    (is_mirrored: bool)
+    (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [N][3]f64 =
   let model : hand_model [num_bones][M] =
     { parents,
       base_relatives,
@@ -171,7 +175,7 @@ entry calculate_jacobian [num_bones][N][M]
       triangles,
       is_mirrored }
   in tabulate 26 (\i ->
-                    let theta' = replicate 26 0 with [i] = 1
+                    let theta' = tabulate 26 ((==i) >-> f64.bool)
                     in jvp (objective model correspondences points) theta theta')
      |> transpose |> map transpose
 
