@@ -207,3 +207,32 @@ entry calculate_jacobian [num_bones][N][M]
 -- compiled input @ data/simple_big/hand10_t26_c25600.in
 -- compiled input @ data/simple_big/hand11_t26_c51200.in
 -- compiled input @ data/simple_big/hand12_t26_c100000.in
+
+-- ==
+-- entry: calculate_jacobian
+-- compiled input @ data/simple_small/hand1_t26_c100.in
+-- output @ data/simple_small/hand1_t26_c100.J
+-- compiled input @ data/simple_small/hand2_t26_c192.in
+-- compiled input @ data/simple_small/hand3_t26_c200.in
+-- compiled input @ data/simple_small/hand4_t26_c400.in
+-- compiled input @ data/simple_small/hand5_t26_c800.in
+-- compiled input @ data/simple_small/hand6_t26_c1600.in
+-- compiled input @ data/simple_small/hand7_t26_c3200.in
+-- compiled input @ data/simple_small/hand8_t26_c6400.in
+-- compiled input @ data/simple_small/hand9_t26_c12800.in
+-- compiled input @ data/simple_small/hand10_t26_c25600.in
+-- compiled input @ data/simple_small/hand11_t26_c51200.in
+-- compiled input @ data/simple_small/hand12_t26_c100000.in
+--
+-- compiled input @ data/simple_big/hand1_t26_c100.in
+-- compiled input @ data/simple_big/hand2_t26_c192.in
+-- compiled input @ data/simple_big/hand3_t26_c200.in
+-- compiled input @ data/simple_big/hand4_t26_c400.in
+-- compiled input @ data/simple_big/hand5_t26_c800.in
+-- compiled input @ data/simple_big/hand6_t26_c1600.in
+-- compiled input @ data/simple_big/hand7_t26_c3200.in
+-- compiled input @ data/simple_big/hand8_t26_c6400.in
+-- compiled input @ data/simple_big/hand9_t26_c12800.in
+-- compiled input @ data/simple_big/hand10_t26_c25600.in
+-- compiled input @ data/simple_big/hand11_t26_c51200.in
+-- compiled input @ data/simple_big/hand12_t26_c100000.in
