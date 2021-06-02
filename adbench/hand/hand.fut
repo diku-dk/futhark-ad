@@ -157,6 +157,7 @@ entry calculate_objective [num_bones][N][M]
       is_mirrored }
   in objective model correspondences points theta
 
+-- The Jacobian is morally transposed, because that is what ADBench expects.
 entry calculate_jacobian [num_bones][N][M]
   (parents: [num_bones]i32)
   (base_relatives: [num_bones][4][4]f64)
@@ -165,7 +166,7 @@ entry calculate_jacobian [num_bones][N][M]
   (base_positions: [4][M]f64)
   (triangles: [][3]i32)
   (is_mirrored: bool)
-  (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [N][3][26]f64 =
+  (correspondences: [N]i32) (points: [3][N]f64) (theta: [26]f64) : [26][N][3]f64 =
   let model : hand_model [num_bones][M] =
     { parents,
       base_relatives,
@@ -177,7 +178,6 @@ entry calculate_jacobian [num_bones][N][M]
   in tabulate 26 (\i ->
                     let theta' = tabulate 26 ((==i) >-> f64.bool)
                     in jvp (objective model correspondences points) theta theta')
-     |> transpose |> map transpose
 
 -- ==
 -- entry: calculate_objective
