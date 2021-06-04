@@ -30,3 +30,15 @@ for x in $datadir/simple_big/hand*.txt; do
     echo $x
     ./data2fut simple "$x" "$datadir/simple_big/model/" | futhark dataset -b > data/simple_big/$(basename -s .txt $x).in
 done
+
+mkdir -p data/complicated_small
+for x in $datadir/complicated_small/hand*.txt; do
+    echo $x
+    ./data2fut complicated "$x" "$datadir/complicated_small/model/" | futhark dataset -b > data/complicated_small/$(basename -s .txt $x).in
+done
+
+mkdir -p data/complicated_big
+for x in $datadir/complicated_big/hand*.txt; do
+    echo $x
+    ./data2fut complicated "$x" "$datadir/complicated_big/model/" | futhark dataset -b > data/complicated_big/$(basename -s .txt $x).in
+done

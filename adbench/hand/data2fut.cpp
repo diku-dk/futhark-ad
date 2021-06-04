@@ -163,7 +163,6 @@ void print_fut(const int& x) {
   std::cout << x << "i32";
 }
 
-
 void print_fut(const double& x) {
   std::cout << x << "f64";
 }
@@ -243,4 +242,10 @@ int main(int argc, char** argv) {
   print_vec(input.data.correspondences); std::cout << std::endl;
   print_fut(input.data.points); std::cout << std::endl;
   print_vec(input.theta); std::cout << std::endl;
+
+  if (complicated) {
+    print_vec(input.us); std::cout << std::endl;
+  } else {
+    std::cout << "empty([0]f64)" << std::endl;
+  }
 }
