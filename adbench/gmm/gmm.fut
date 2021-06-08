@@ -75,7 +75,7 @@ entry calculate_jacobian [d][k]
 
 -- ==
 -- entry: calculate_objective
--- compiled input @ data/1k/gmm_d2_K10.in output @ data/gmm/1k/gmm_d2_K10.F
+-- compiled input @ data/1k/gmm_d2_K10.in output @ data/1k/gmm_d2_K10.F
 -- compiled input @ data/1k/gmm_d64_K100.in
 -- compiled input @ data/1k/gmm_d2_K200.in
 -- compiled input @ data/1k/gmm_d10_K10.in
@@ -187,7 +187,7 @@ entry calculate_jacobian [d][k]
 
 -- ==
 -- entry: calculate_jacobian
--- compiled input @ data/1k/gmm_d2_K10.in output @ data/gmm/1k/gmm_d2_K10.J
+-- compiled input @ data/1k/gmm_d2_K10.in output @ data/1k/gmm_d2_K10.J
 -- compiled input @ data/1k/gmm_d64_K100.in
 -- compiled input @ data/1k/gmm_d2_K200.in
 -- compiled input @ data/1k/gmm_d10_K10.in
