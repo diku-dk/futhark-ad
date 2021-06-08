@@ -57,19 +57,6 @@ let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (
 
 let grad f x = vjp f x 1f64
 
-let fwd_grad [d][k][j] f (a : [k]f64, m :[k][d]f64, i : [k][j]f64 ) : []f64 =
-  let a_zero = replicate k 0.0
-  let m_zero = replicate k (replicate d 0.0)
-  let i_zero = replicate k (replicate j 0.0)
-  let one_hot_1d n idx = tabulate n (\i -> if idx == i then 1.0 else 0.0)
-  let one_hot_1ds n = map (one_hot_1d n) (iota n)
-  let one_hot_2d n m (idx, jdx) = tabulate_2d n m (\i j -> if (idx, jdx) == (i,j) then 1.0 else 0.0)
-  let one_hot_2ds n m = flatten <| map (\i -> map (\j -> one_hot_2d n m (i, j)) (iota m)) (iota n)
-  let a_grad = one_hot_1ds k |> map (\a_d -> jvp f (a, m, i) (a_d, m_zero, i_zero))
-  let m_grad = one_hot_2ds k d |> map (\m_d -> jvp f (a, m, i) (a_zero, m_d, i_zero))
-  let i_grad = one_hot_2ds k j |> map (\i_d -> jvp f (a, m, i) (a_zero, m_zero, i_d))
-  in a_grad ++ m_grad ++ i_grad
-
 entry calculate_objective [d][k]
 			  (alphas: [k]f64)
 			  (means: [k][d]f64)
@@ -85,11 +72,3 @@ entry calculate_jacobian [d][k]
 			 (x: [][d]f64)
 			 (w_gamma: f64) (w_m: i64) =
   grad (\(a, m, i) -> gmmObjective a m i x w_gamma w_m) (alphas, means, icf)
-
-entry calculate_jacobian_fwd [d][k]
-			 (alphas: [k]f64)
-			 (means: [k][d]f64)
-			 (icf: [k][]f64)
-			 (x: [][d]f64)
-			 (w_gamma: f64) (w_m: i64) =
-  fwd_grad (\(a, m, i) -> gmmObjective a m i x w_gamma w_m) (alphas, means, icf)
