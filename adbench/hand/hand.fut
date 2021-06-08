@@ -178,20 +178,6 @@ entry calculate_objective [num_bones][N][M]
       is_mirrored }
   in objective model correspondences points theta us
 
--- Only used in the complex case.
---
--- How can this be the most efficient way of compressing the Jacobian?
--- This can't be right, but it's what the F# implementation does.
-let compression x theta_count =
-  tabulate_2d x (theta_count+2)
-              (\i j -> if (i < theta_count && j >= 2 && i + 2 == j)
-                          || (i >= theta_count && j < 2 && (i - theta_count - j) % 2 == 0)
-                       then 1f64 else 0)
-
-
-let compress_jacobian [x] (J: [x][]f64) =
-  transpose J `matmul` compression x theta_count
-
 -- The Jacobian is morally transposed, because that is what ADBench expects.
 entry calculate_jacobian [num_bones][N][M][num_us]
   (parents: [num_bones]i32)
@@ -212,14 +198,18 @@ entry calculate_jacobian [num_bones][N][M][num_us]
       triangles,
       is_mirrored }
   let f i =
-    let theta' = tabulate theta_count ((==i) >-> f64.bool)
-    let us' = tabulate num_us ((==(i-theta_count)) >-> f64.bool)--
+    let theta' = tabulate theta_count (\j -> f64.bool(j==i))
+    let us' = tabulate num_us (\j -> f64.bool(i >= theta_count && (j%2)==(i%2)))
     in jvp (\(a,b) -> objective model correspondences points a b)
            (theta,us) (theta',us')
-  let J = map (flatten_to (N*3)) (tabulate (theta_count+num_us) f)
+  let us_derivs = if num_us == 0 then 0 else 2
+  let J = map (flatten_to (N*3)) (tabulate (theta_count+us_derivs) f)
   in if num_us == 0
      then J
-     else compress_jacobian J
+     else
+       -- ADBench expects the packed 'us' derivatives to be in the
+       -- first two columns.
+       map (rotate (-2)) (transpose J)
 
 -- ==
 -- entry: calculate_objective
