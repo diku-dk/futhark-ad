@@ -1,4 +1,3 @@
-
 #!/bin/sh
 #
 # Run this to convert ADBench data files to Futhark-compatible data
