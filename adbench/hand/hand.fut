@@ -209,7 +209,7 @@ entry calculate_jacobian [num_bones][N][M][num_us]
      else
        -- ADBench expects the packed 'us' derivatives to be in the
        -- first two columns.
-       map (rotate (-2)) (transpose J)
+       rotate (-2) J
 
 -- ==
 -- entry: calculate_objective
