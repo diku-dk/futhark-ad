@@ -15,7 +15,7 @@ fi
 ADBench=$1
 ghc convert.hs
 
-for x in $(find ~/repos/ADBench/data/gmm -maxdepth 1 -mindepth 1 -type d); do
+for x in $(find "$ADBench/data/gmm" -maxdepth 1 -mindepth 1 -type d); do
     mkdir -p data/$(basename $x)
 done
 
