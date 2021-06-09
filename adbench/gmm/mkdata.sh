@@ -19,7 +19,7 @@ for dir in $(find "$ADBench/data/gmm" -maxdepth 1 -mindepth 1 -type d); do
     mkdir -p data/$(basename $dir)
     for x in $(find $dir -name \*.txt); do
         echo $x
-        ./convert < $x | gzip > data/$(basename $(dirname $x))/$(basename -s .txt $x).in.gz;
+        ./convert < $x | gzip > data/$(basename $dir)/$(basename -s .txt $x).in.gz;
     done
 done
 
