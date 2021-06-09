@@ -43,9 +43,6 @@ matrixize k = do
   replicateM_ (k - 1) $ do l <- BS.getLine; BS.putStr $ c2w ',' <: matrix_row l
   putStr "]"
 
-i64 :: ByteString -> ByteString
-i64 = (<> "i64")
-
 main :: IO ()
 main = do
   [_d, k, n] <- map (maybe (error "oops") fst . readInt) . BS.split 32 <$> BS.getLine
