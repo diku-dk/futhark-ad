@@ -1,41 +1,69 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Data.List
-import Data.String
+import Control.Monad
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import Data.ByteString.Char8 (readInt)
+import Data.Word (Word8)
 
-split :: [Int] -> [a] -> [[a]]
-split [] as = [as]
-split (i : is) as = take i as : split is (drop i as)
-
-vectorize :: [String] -> String
-vectorize xs = "[" ++ intercalate ", " xs ++ "]"
-
-matrixize :: [[String]] -> String
-matrixize xss = "[" ++ intercalate ",\n" (map vectorize xss) ++ "]"
-
-i64 :: String -> String
-i64 = (++ "i64")
-
-process :: String -> String
-process s =
-  intercalate "\n" $
-    [ vectorize $ concat alphas,
-      matrixize means,
-      matrixize icf,
-      matrixize xs',
-      w_g ++ " " ++ i64 w_m
-    ]
+vectorize :: Word8 -> ByteString -> ByteString
+vectorize sep xs =
+  let xs' = if BS.last xs == sep then BS.init xs else xs
+   in "[" <> BS.map f xs' <> "]"
   where
-    (xs', w_g, w_m)
-      | length xs_and_wishart == 2 && n_int > 1 =
-        let (x : [[w_g, w_m]]) = xs_and_wishart
-         in (replicate n_int x, w_g, w_m)
-      | otherwise =
-        let [xs, [[w_g, w_m]]] = split [n_int] xs_and_wishart
-         in (xs, w_g, w_m)
-    [alphas, means, icf, xs_and_wishart] = split [k_int, k_int, k_int] rest
-    (k_int, n_int) = (read k :: Int, read n :: Int)
-    ((_d : k : [n]) : rest) = map words $ lines s
+    f :: Word8 -> Word8
+    f w
+      | w == sep = 44
+      | otherwise = w
+
+alphas :: Int -> IO ()
+alphas k = do
+  putStr "["
+  replicateM_ k doLine
+  putStr "]"
+  where
+    doLine = BS.putStr =<< ((flip BS.snoc) 44 . BS.init) <$> BS.getLine
+
+matrix_line :: ByteString -> ByteString
+matrix_line = BS.cons 91 . BS.map f
+  where
+    f w
+      | w == 10 = 93
+      | w == 32 = 44
+      | otherwise = w
+
+matrixize :: Int -> IO ()
+matrixize k = do
+  putStr "["
+  replicateM_ k (BS.putStr =<< matrix_line <$> BS.getLine)
+  putStr "]"
+
+i64 :: ByteString -> ByteString
+i64 = (<> "i64")
 
 main :: IO ()
-main = getContents >>= putStr . process
+main = do
+  [_d, k, n] <- map (maybe (error "oops") fst . readInt) . BS.split 32 <$> BS.getLine
+  alphas k
+  matrixize k -- means
+  matrixize k -- icf
+  next1 <- BS.getLine
+  next2 <- BS.getLine
+  next3 <- BS.getLine
+  putStr "["
+  if next3 == mempty
+    then do
+      replicateM_ n $ BS.putStr $ matrix_line next1
+      putStr "]"
+      let [w_g, w_m] = BS.split 32 next3
+      BS.putStr $ w_g <> " " <> i64 w_m
+    else do
+      BS.putStr $ matrix_line next1
+      BS.putStr $ matrix_line next2
+      BS.putStr $ matrix_line next3
+      replicateM_ (n - 3) (BS.putStr =<< matrix_line <$> BS.getLine)
+      putStr "]"
+      (w_g : w_m : _) <- BS.split 32 <$> BS.getLine
+      BS.putStr $ w_g <> " " <> i64 w_m
