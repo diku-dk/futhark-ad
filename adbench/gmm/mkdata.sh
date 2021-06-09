@@ -15,11 +15,11 @@ fi
 ADBench=$1
 ghc convert.hs
 
-for x in $(find "$ADBench/data/gmm" -maxdepth 1 -mindepth 1 -type d); do
-    mkdir -p data/$(basename $x)
+for dir in $(find "$ADBench/data/gmm" -maxdepth 1 -mindepth 1 -type d); do
+    mkdir -p data/$(basename $dir)
+    for x in $(find $dir -name \*.txt); do
+        echo $x
+        ./convert < $x | gzip > data/$(basename $(dirname $x))/$(basename -s .txt $x).in.gz;
+    done
 done
 
-for x in $(find "$ADBench/data/gmm/" -name \*.txt); do
-    echo $x
-    ./convert < $x > data/$(basename $(dirname $x))/$(basename -s .txt $x).in;
-done
