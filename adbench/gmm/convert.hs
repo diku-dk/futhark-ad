@@ -5,39 +5,42 @@ module Main where
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.ByteString.Char8 (readInt)
+import Data.ByteString.Char8 (readInt, strip)
 import Data.Word (Word8)
+import System.IO (isEOF)
 
-vectorize :: Word8 -> ByteString -> ByteString
-vectorize sep xs =
-  let xs' = if BS.last xs == sep then BS.init xs else xs
-   in "[" <> BS.map f xs' <> "]"
-  where
-    f :: Word8 -> Word8
-    f w
-      | w == sep = 44
-      | otherwise = w
+c2w :: Char -> Word8
+c2w = toEnum . fromEnum
+
+(>:) :: ByteString -> Word8 -> ByteString
+(>:) = BS.snoc
+
+(<:) :: Word8 -> ByteString -> ByteString
+(<:) = BS.cons
 
 alphas :: Int -> IO ()
 alphas k = do
   putStr "["
-  replicateM_ k doLine
+  BS.putStr =<< BS.getLine
+  replicateM_ (k - 1) doLine
   putStr "]"
   where
-    doLine = BS.putStr =<< ((flip BS.snoc) 44 . BS.init) <$> BS.getLine
+    doLine = do
+      l <- BS.getLine
+      BS.putStr $ c2w ',' <: l
 
-matrix_line :: ByteString -> ByteString
-matrix_line = BS.cons 91 . BS.map f
+matrix_row :: ByteString -> ByteString
+matrix_row bs = c2w '[' <: BS.map f (strip bs) >: c2w ']'
   where
     f w
-      | w == 10 = 93
-      | w == 32 = 44
+      | w == c2w ' ' = c2w ','
       | otherwise = w
 
 matrixize :: Int -> IO ()
 matrixize k = do
   putStr "["
-  replicateM_ k (BS.putStr =<< matrix_line <$> BS.getLine)
+  BS.putStr =<< matrix_row <$> BS.getLine
+  replicateM_ (k - 1) $ do l <- BS.getLine; BS.putStr $ c2w ',' <: matrix_row l
   putStr "]"
 
 i64 :: ByteString -> ByteString
@@ -47,23 +50,26 @@ main :: IO ()
 main = do
   [_d, k, n] <- map (maybe (error "oops") fst . readInt) . BS.split 32 <$> BS.getLine
   alphas k
-  matrixize k -- means
-  matrixize k -- icf
+  putStr "\n"
+  matrixize k
+  putStr "\n"
+  matrixize k
+  putStr "\n"
   next1 <- BS.getLine
   next2 <- BS.getLine
-  next3 <- BS.getLine
+  eof <- isEOF
   putStr "["
-  if next3 == mempty
+  if eof
     then do
-      replicateM_ n $ BS.putStr $ matrix_line next1
-      putStr "]"
-      let [w_g, w_m] = BS.split 32 next3
-      BS.putStr $ w_g <> " " <> i64 w_m
+      BS.putStr $ matrix_row next1
+      replicateM_ (n -1) (BS.putStr $ c2w ',' <: matrix_row next1)
+      putStr "]\n"
+      let (w_g : w_m : _) = BS.split 32 next2
+      BS.putStr $ w_g <> " " <> w_m <> "i64"
     else do
-      BS.putStr $ matrix_line next1
-      BS.putStr $ matrix_line next2
-      BS.putStr $ matrix_line next3
-      replicateM_ (n - 3) (BS.putStr =<< matrix_line <$> BS.getLine)
-      putStr "]"
+      BS.putStr $ matrix_row next1
+      BS.putStr $ c2w ',' <: matrix_row next2
+      replicateM_ (n - 2) $ do l <- BS.getLine; BS.putStr $ c2w ',' <: matrix_row l
+      putStr "]\n"
       (w_g : w_m : _) <- BS.split 32 <$> BS.getLine
-      BS.putStr $ w_g <> " " <> i64 w_m
+      BS.putStr $ w_g <> " " <> w_m <> "i64"
