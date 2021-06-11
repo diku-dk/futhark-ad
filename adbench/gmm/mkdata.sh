@@ -14,12 +14,13 @@ fi
 
 ADBench=$1
 ghc convert.hs
+futhark c text2bin.fut
 
 for dir in $(find "$ADBench/data/gmm" -maxdepth 1 -mindepth 1 -type d); do
     mkdir -p data/$(basename $dir)
     for x in $(find $dir -name \*.txt); do
         echo $x
-        ./convert < $x | futhark dataset -b | gzip > data/$(basename $dir)/$(basename -s .txt $x).in.gz;
+        ./convert < $x | ./text2bin -b | gzip > data/$(basename $dir)/$(basename -s .txt $x).in.gz;
     done
 done
 
