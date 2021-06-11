@@ -90,7 +90,6 @@ entry calculate_jacobian [d][k]
 -- compiled input @ data/1k/gmm_d2_K5.in.gz
 -- compiled input @ data/1k/gmm_d64_K25.in.gz
 -- compiled input @ data/1k/gmm_d32_K5.in.gz
--- compiled input @ data/1k/gmm_d2_K2.in.gz
 -- compiled input @ data/1k/gmm_d64_K200.in.gz
 -- compiled input @ data/1k/gmm_d20_K25.in.gz
 -- compiled input @ data/1k/gmm_d128_K25.in.gz
@@ -202,7 +201,6 @@ entry calculate_jacobian [d][k]
 -- compiled input @ data/1k/gmm_d2_K5.in.gz
 -- compiled input @ data/1k/gmm_d64_K25.in.gz
 -- compiled input @ data/1k/gmm_d32_K5.in.gz
--- compiled input @ data/1k/gmm_d2_K2.in.gz
 -- compiled input @ data/1k/gmm_d64_K200.in.gz
 -- compiled input @ data/1k/gmm_d20_K25.in.gz
 -- compiled input @ data/1k/gmm_d128_K25.in.gz
