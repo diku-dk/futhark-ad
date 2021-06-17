@@ -18,9 +18,9 @@ let frobeniusNormSq (mat : [][]f64) = flatten mat |> map (**2) |> f64.sum
 
 let unpackQ [d] (logdiag: [d]f64) (lt: []f64) : [d][d]f64  =
   tabulate_2d d d (\i j ->
-		    if i < j then 0
-		    else if i == j then f64.exp logdiag[i]
-		    else lt[d * j + i - j - 1 - j * (j + 1) / 2])
+                    if i < j then 0
+                    else if i == j then f64.exp logdiag[i]
+                    else lt[d * j + i - j - 1 - j * (j + 1) / 2])
 
 let logGammaDistrib (a : f64) (p : i64) =
   0.25 * f64.i64 p * f64.i64 (p - 1) * f64.log f64.pi +
@@ -47,10 +47,8 @@ let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (
                                 in (unpackQ logdiag lt, f64.sum logdiag))
     let slse = x |> sumBy (\xi ->
                     logsumexp_DArray <| map2
-                        (\qAndSum alphaAndMeans ->
-                            let (q, sumQ) = qAndSum
-                            let (alpha, meansk) = alphaAndMeans
-			    let qximeansk = flatten (transpose (linalg_f64.matmul q (transpose [vMinus xi meansk])))
+                        (\(q, sumQ) (alpha, meansk) ->
+                            let qximeansk = linalg_f64.matvecmul_row q (vMinus xi meansk)
                             in -0.5 * l2normSq qximeansk + alpha + sumQ
                         ) qsAndSums alphasAndMeans)
     in constant + slse  - f64.i64 n * logsumexp alphas + logWishartPrior qsAndSums wishartGamma wishartM d
@@ -58,19 +56,19 @@ let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (
 let grad f x = vjp f x 1f64
 
 entry calculate_objective [d][k]
-			  (alphas: [k]f64)
-			  (means: [k][d]f64)
-			  (icf: [k][]f64)
-			  (x: [][d]f64)
-			  (w_gamma: f64) (w_m: i64) =
+                          (alphas: [k]f64)
+                          (means: [k][d]f64)
+                          (icf: [k][]f64)
+                          (x: [][d]f64)
+                          (w_gamma: f64) (w_m: i64) =
     gmmObjective alphas means icf x w_gamma w_m
 
 entry calculate_jacobian [d][k]
-			 (alphas: [k]f64)
-			 (means: [k][d]f64)
-			 (icf: [k][]f64)
-			 (x: [][d]f64)
-			 (w_gamma: f64) (w_m: i64) =
+                         (alphas: [k]f64)
+                         (means: [k][d]f64)
+                         (icf: [k][]f64)
+                         (x: [][d]f64)
+                         (w_gamma: f64) (w_m: i64) =
   grad (\(a, m, i) -> gmmObjective a m i x w_gamma w_m) (alphas, means, icf)
 
 -- ==
