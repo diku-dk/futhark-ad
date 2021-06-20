@@ -55,19 +55,19 @@ let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (
 
 let grad f x = vjp f x 1f64
 
-entry calculate_objective [d][k]
+entry calculate_objective [d][k][n]
                           (alphas: [k]f64)
                           (means: [k][d]f64)
                           (icf: [k][]f64)
-                          (x: [][d]f64)
+                          (x: [n][d]f64)
                           (w_gamma: f64) (w_m: i64) =
     gmmObjective alphas means icf x w_gamma w_m
 
-entry calculate_jacobian [d][k]
+entry calculate_jacobian [d][k][n]
                          (alphas: [k]f64)
                          (means: [k][d]f64)
                          (icf: [k][]f64)
-                         (x: [][d]f64)
+                         (x: [n][d]f64)
                          (w_gamma: f64) (w_m: i64) =
   grad (\(a, m, i) -> gmmObjective a m i x w_gamma w_m) (alphas, means, icf)
 
