@@ -41,10 +41,9 @@ let logWishartPrior [k] (qsAndSums: [k]([][]f64, f64)) wishartGamma wishartM p =
 let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (x: [n][d]f64) (wishartGamma: f64) (wishartM: i64) =
     let constant = -(f64.i64 n * f64.i64 d * 0.5 * f64.log (2 * f64.pi))
     let alphasAndMeans = zip alphas means
-    let qsAndSums = icf |> map (\v ->
-                                let logdiag = v[0:d]
-                                let lt = v[d:]
-                                in (unpackQ logdiag lt, f64.sum logdiag))
+    let logdiags = icf[:,:d]
+    let lts = icf[:,d:]
+    let qsAndSums = zip (map2 unpackQ logdiags lts) (map f64.sum logdiags)
     let slse = x |> sumBy (\xi ->
                     logsumexp_DArray <| map2
                         (\(q, sumQ) (alpha, meansk) ->
