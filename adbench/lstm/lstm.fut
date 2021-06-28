@@ -31,9 +31,8 @@ let lstmPredict [slen] [d]
         loop (s, x) = (state_ini, x0)
         for i < slen do
             let (h, c) = lstmModel mainParams[i,0] mainParams[i,1] state[i,0] state[i,1] x
-            let i_rev = slen - i - 1
-            let s[i_rev, 0] = c
-            let s[i_rev, 1] = h
+            let s[i, 0] = h
+            let s[i, 1] = c
             in  (s, h)
     let v' = map2 (*) x' extraParams[1] |>
              map2 (+) extraParams[2]
