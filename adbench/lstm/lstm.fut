@@ -47,7 +47,7 @@ let lstmObjective   [stlenx2] [dx4] [lenSeq] [d]
     let stlen = assert (0 == stlenx2 % 2 && dx4 == 4*d) (stlenx2 / 2)
     -- mainParams : [stlen][2][4][d]f64
     let mainParams = unflatten stlen 2 <| map (unflatten 4 d) mainParams0
-    -- state : [stlen][2]f64
+    -- state : [stlen][2][d]f64
     let state = unflatten stlen 2 state0
     let (_, total) =
         loop (oldState, oldTotal) = (state, 0f64) for i < lenSeq - 1 do
