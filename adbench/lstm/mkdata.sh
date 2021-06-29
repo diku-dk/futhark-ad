@@ -31,6 +31,8 @@ if [ -f tmp.txt ]; then
     rm   tmp.txt
 fi
 
+mkdir -p data
+
 for x in $datadir/lstm_l*.txt; do
     echo $x
     ./data2fut "$x" "tmp.txt"
