@@ -20,11 +20,10 @@ let cost [n][k][d] (points: [n][d]f32) (centres: [k][d]f32) =
 
 let grad f x = vjp f x 1f32
 
-let learning_rate = 0.01 : f32
 let tolerance = 1 : f32
 
 let main [n][d]
-        (threshold: i32) (k: i32) (max_iterations: i32)
+        (_threshold: i32) (k: i32) (max_iterations: i32)
         (points: [n][d]f32) =
   let k = i64.i32 k
   -- Assign arbitrary initial cluster centres.
