@@ -38,7 +38,6 @@ let main [n][d]
                      (replicate k (replicate d 1))
     let x = map (map (1/)) cost'' |> map2 (map2 (*)) cost'
     let new_centres = map2 (map2 (-)) cluster_centres x
-    let score = cost points new_centres
     in if (map2 euclid_dist_2 new_centres cluster_centres |> f32.sum) < tolerance
        then (new_centres, max_iterations)
        else (new_centres, i+1)
