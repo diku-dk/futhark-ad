@@ -27,7 +27,7 @@ let main [n][d]
         (points: [n][d]f32) =
   let k = i64.i32 k
   -- Assign arbitrary initial cluster centres.
-  let cluster_centres = take k points
+  let cluster_centres = take k (reverse points)
   let i = 0
   let (cluster_centres,_i) =
     loop (cluster_centres : [k][d]f32, i)
