@@ -5,9 +5,7 @@
 -- compiled nobench input @ data/100.in
 -- output @ data/100.out
 -- compiled input @ data/204800.in.gz
--- output @ data/204800.out
 -- compiled input @ data/kdd_cup.in.gz
--- output @ data/kdd_cup.out
 
 let euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
   f32.sum (map (\x->x*x) (map2 (-) pt1 pt2))
@@ -18,8 +16,6 @@ let cost [n][k][d] (points: [n][d]f32) (centres: [k][d]f32) =
   |> map f32.minimum
   |> f32.sum
 
-let grad f x = vjp f x 1f32
-
 let tolerance = 1 : f32
 
 let main [n][d]
@@ -29,15 +25,17 @@ let main [n][d]
   -- Assign arbitrary initial cluster centres.
   let cluster_centres = take k (reverse points)
   let i = 0
-  let (cluster_centres,_i) =
-    loop (cluster_centres : [k][d]f32, i)
-    while i < max_iterations do
-    let cost' = grad (cost points) cluster_centres
-    let cost'' = jvp (grad (cost points)) cluster_centres
-                     (replicate k (replicate d 1))
+  let stop = false
+  let (cluster_centres,i,_stop) =
+    loop (cluster_centres : [k][d]f32, i, stop)
+    while i < max_iterations && !stop do
+    let (cost', cost'') =
+      jvp2 (\x -> vjp (cost points) x 1) cluster_centres
+           (replicate k (replicate d 1))
     let x = map2 (map2 (/)) cost' cost''
     let new_centres = map2 (map2 (-)) cluster_centres x
-    in if (map2 euclid_dist_2 new_centres cluster_centres |> f32.sum) < tolerance
-       then (new_centres, max_iterations)
-       else (new_centres, i+1)
-  in cluster_centres
+    let stop =
+      (map2 euclid_dist_2 new_centres cluster_centres |> f32.sum)
+      < tolerance
+    in (new_centres, i+1, stop)
+  in (cluster_centres, i)
