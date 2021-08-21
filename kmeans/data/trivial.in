@@ -1,7 +1,7 @@
 -- Threshold
 0
 -- Number of clusters
-3
+3i64
 -- Max iterations
 500
 -- Points

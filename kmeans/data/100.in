@@ -1,7 +1,7 @@
 -- Threshold
 0
 -- Clusters
-10
+10i64
 -- Max iterations
 500
 [

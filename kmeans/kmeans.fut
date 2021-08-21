@@ -19,9 +19,8 @@ let cost [n][k][d] (points: [n][d]f32) (centres: [k][d]f32) =
 let tolerance = 1 : f32
 
 let main [n][d]
-        (_threshold: i32) (k: i32) (max_iterations: i32)
+        (_threshold: i32) (k: i64) (max_iterations: i32)
         (points: [n][d]f32) =
-  let k = i64.i32 k
   -- Assign arbitrary initial cluster centres.
   let cluster_centres = take k (reverse points)
   let i = 0
