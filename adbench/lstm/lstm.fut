@@ -1,4 +1,3 @@
-
 let dotproduct [n] (a: [n]f64) (b: [n]f64) : f64 =
     f64.sum <| map2 (*) a b
 
@@ -38,11 +37,11 @@ let lstmPredict [slen] [d]
              map2 (+) extraParams[2]
     in  (v', state')
 
-let lstmObjective   [stlenx2] [dx4] [lenSeq] [d]
-                    (mainParams0: [stlenx2][dx4]f64)
-                    (extraParams: [3][d]f64)
-                    (state0: [stlenx2][d]f64)
-                    (sequence: [lenSeq][d]f64) : f64 =
+let lstmObjective [stlenx2] [dx4] [lenSeq] [d]
+                  (mainParams0: [stlenx2][dx4]f64)
+                  (extraParams: [3][d]f64)
+                  (state0: [stlenx2][d]f64)
+                  (sequence: [lenSeq][d]f64) : f64 =
     let stlen = assert (0 == stlenx2 % 2 && dx4 == 4*d) (stlenx2 / 2)
     -- mainParams : [stlen][2][4][d]f64
     let mainParams = unflatten stlen 2 <| map (unflatten 4 d) mainParams0
@@ -59,9 +58,18 @@ let lstmObjective   [stlenx2] [dx4] [lenSeq] [d]
     let count = d * (lenSeq - 1)
     in - (total / f64.i64(count))
 
-let main   [stlenx2] [dx4] [lenSeq] [d]
-                    (mainParams0: [stlenx2][dx4]f64)
-                    (extraParams: [3][d]f64)
-                    (state0: [stlenx2][d]f64)
-                    (sequence: [lenSeq][d]f64) : f64 =
-    lstmObjective mainParams0 extraParams state0 sequence
+entry calculate_objective [stlenx2] [dx4] [lenSeq] [d]
+                          (mainParams0: [stlenx2][dx4]f64)
+                          (extraParams: [3][d]f64)
+                          (state0: [stlenx2][d]f64)
+                          (sequence: [lenSeq][d]f64) : f64 =
+  lstmObjective mainParams0 extraParams state0 sequence
+
+entry calculate_jacobian [stlenx2] [dx4] [lenSeq] [d]
+                          (mainParams: [stlenx2][dx4]f64)
+                          (extraParams: [3][d]f64)
+                          (state0: [stlenx2][d]f64)
+                          (sequence: [lenSeq][d]f64) : []f64 =
+  let (x,y) =
+    vjp (\(x, y) -> calculate_objective x y state0 sequence) (mainParams, extraParams) 1
+  in flatten x ++ flatten y -- Maybe not right.

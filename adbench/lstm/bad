@@ -1,0 +1,1633 @@
+
+
+entry("calculate_objective",
+      {direct, direct, direct, direct},
+      {direct})
+  entry_calculate_objective (stlenx2_10534 : i64, dx4_10535 : i64,
+                             d_10536 : i64, lenSeq_10537 : i64,
+                             mainParams0_10538 : [stlenx2_10534][dx4_10535]f64,
+                             extraParams_10539 : [3i64][d_10536]f64,
+                             state0_10540 : [stlenx2_10534][d_10536]f64,
+                             sequence_10541 : [lenSeq_10537][d_10536]f64)
+  : {f64} = {
+  let {y_10542 : ({}, i64)} = smod64(stlenx2_10534, 2i64)
+  let {cond_10543 : ({}, bool)} = eq_i64(0i64, y_10542)
+  let {y_10544 : ({}, i64)} = mul64(4i64, d_10536)
+  let {assert_cond_t_res_10545 : ({}, bool)} = eq_i64(dx4_10535, y_10544)
+  let {x_10546 : ({}, bool)} = logand(cond_10543, assert_cond_t_res_10545)
+  let {assert_c_10547 : ({}, unit)} =
+    assert(x_10546, {"Assertion is false: (0 == stlenx2 % 2 && dx4 == 4 * d)"},
+           "lstm.fut:46:17-69")
+  let {stlen_10548 : ({}, i64)} =
+    #{assert_c_10547}
+    sdiv64(stlenx2_10534, 2i64)
+  let {dim_ok_10549 : ({}, bool)} = eq_i64(y_10544, dx4_10535)
+  let {dim_ok_cert_10550 : ({}, unit)} =
+    assert(dim_ok_10549,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {x_10551 : ({}, i64)} = mul_nw64(2i64, stlen_10548)
+  let {dim_ok_10552 : ({}, bool)} = eq_i64(x_10551, stlenx2_10534)
+  let {dim_ok_cert_10553 : ({}, unit)} =
+    assert(dim_ok_10552,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {defunc_0_f_res_10554 : ({mainParams0_10538},
+                               [stlen_10548][2i64][4i64][d_10536]f64)} =
+    #{dim_ok_cert_10550, dim_ok_cert_10553}
+    reshape((stlen_10548, 2i64, 4i64, d_10536), mainParams0_10538)
+  let {dim_ok_cert_10555 : ({}, unit)} =
+    assert(dim_ok_10552,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {unflatten_res_10556 : ({state0_10540},
+                              [stlen_10548][2i64][d_10536]f64)} =
+    #{dim_ok_cert_10555}
+    reshape((stlen_10548, 2i64, d_10536), state0_10540)
+  let {upper_bound_10557 : ({}, i64)} = sub64(lenSeq_10537, 1i64)
+  let {total_10558 : ({}, [stlen_10548][2i64][d_10536]f64),
+       total_10559 : ({}, f64)} =
+    loop {oldState_10561 : [stlen_10548][2i64][d_10536]f64,
+          oldTotal_10562 : f64} = {unflatten_res_10556, 0.0f64}
+    for i_10560:i64 < upper_bound_10557 do {
+      let {y_10563 : ({}, bool)} = slt64(i_10560, lenSeq_10537)
+      let {index_certs_10564 : ({}, unit)} =
+        assert(y_10563, {"Index [", i_10560 : i64,
+                         "] out of bounds for array of shape [",
+                         lenSeq_10537 : i64, "]."}, "lstm.fut:53:82-92")
+      let {lstmPredict_arg_10565 : ({sequence_10541}, [d_10536]f64)} =
+        #{index_certs_10564}
+        sequence_10541[i_10560, 0i64 :+ d_10536 * 1i64]
+      let {defunc_2_map2_arg_10566 : ({extraParams_10539}, [d_10536]f64)} =
+        extraParams_10539[0i64, 0i64 :+ d_10536 * 1i64]
+      let {defunc_1_map_res_10567 : ({}, [d_10536]f64)} =
+        map(d_10536,
+            {lstmPredict_arg_10565, defunc_2_map2_arg_10566},
+            \ {x_10568 : f64, x_10569 : f64} : {f64} ->
+              let {defunc_1_f_res_10570 : ({}, f64)} = fmul64(x_10568, x_10569)
+              in {defunc_1_f_res_10570})
+      let {defunc_3_map_res_10571 : ({}, [stlen_10548][2i64][d_10536]f64)} =
+        replicate([stlen_10548][2i64][d_10536], 0.0f64)
+      let {lstmPredict_res_10572 : ({}, [stlen_10548][2i64][d_10536]f64),
+           lstmPredict_res_10573 : ({}, [d_10536]f64)} =
+        -- Consumes defunc_3_map_res_10571
+        loop {s_10575 : *[stlen_10548][2i64][d_10536]f64,
+              x_10576 : [d_10536]f64} = {defunc_3_map_res_10571,
+                                         defunc_1_map_res_10567}
+        for i_10574:i64 < stlen_10548 do {
+          let {lstmModel_arg_10577 : ({oldState_10561}, [d_10536]f64)} =
+            oldState_10561[i_10574, 1i64, 0i64 :+ d_10536 * 1i64]
+          let {lstmModel_arg_10578 : ({oldState_10561}, [d_10536]f64)} =
+            oldState_10561[i_10574, 0i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_1_map2_arg_10579 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 1i64, 0i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_2_map2_arg_10580 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 0i64, 0i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_1_map2_arg_10581 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 1i64, 1i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_2_map2_arg_10582 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 0i64, 1i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_1_map2_arg_10583 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 1i64, 2i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_2_map2_arg_10584 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 0i64, 2i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_1_map2_arg_10585 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 1i64, 3i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_2_map2_arg_10586 : ({defunc_0_f_res_10554},
+                                          [d_10536]f64)} =
+            defunc_0_f_res_10554[i_10574, 0i64, 3i64, 0i64 :+ d_10536 * 1i64]
+          let {defunc_1_map_res_10615 : ({}, [d_10536]f64),
+               defunc_1_map_res_10616 : ({}, [d_10536]f64)} =
+            map(d_10536,
+                {x_10576, defunc_2_map2_arg_10580, defunc_1_map2_arg_10579,
+                 lstmModel_arg_10578, defunc_2_map2_arg_10582,
+                 defunc_1_map2_arg_10581, defunc_2_map2_arg_10586,
+                 defunc_1_map2_arg_10585, lstmModel_arg_10577,
+                 defunc_2_map2_arg_10584, defunc_1_map2_arg_10583},
+                \ {x_10617 : f64, x_10618 : f64, x_10619 : f64, x_10620 : f64,
+                   x_10621 : f64, x_10622 : f64, x_10623 : f64, x_10624 : f64,
+                   x_10625 : f64, x_10626 : f64, x_10627 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_10628 : ({}, f64)} =
+                    fmul64(x_10617, x_10618)
+                  let {defunc_1_f_res_10629 : ({}, f64)} =
+                    fadd64(x_10619, defunc_1_f_res_10628)
+                  let {exp_arg_10630 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10629)
+                  let {exp_res_10631 : ({}, f64)} =
+                    apply exp64(exp_arg_10630)
+                    : {f64}
+                  let {y_10632 : ({}, f64)} = fadd64(1.0f64, exp_res_10631)
+                  let {defunc_0_f_res_10633 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10632)
+                  let {defunc_1_f_res_10634 : ({}, f64)} =
+                    fmul64(x_10620, x_10621)
+                  let {defunc_1_f_res_10635 : ({}, f64)} =
+                    fadd64(x_10622, defunc_1_f_res_10634)
+                  let {exp_arg_10636 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10635)
+                  let {exp_res_10637 : ({}, f64)} =
+                    apply exp64(exp_arg_10636)
+                    : {f64}
+                  let {y_10638 : ({}, f64)} = fadd64(1.0f64, exp_res_10637)
+                  let {defunc_0_f_res_10639 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10638)
+                  let {defunc_1_f_res_10640 : ({}, f64)} =
+                    fmul64(x_10620, x_10623)
+                  let {defunc_1_f_res_10641 : ({}, f64)} =
+                    fadd64(x_10624, defunc_1_f_res_10640)
+                  let {defunc_0_f_res_10642 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10641)
+                    : {f64}
+                  let {defunc_1_f_res_10643 : ({}, f64)} =
+                    fmul64(x_10625, defunc_0_f_res_10633)
+                  let {defunc_1_f_res_10644 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10639, defunc_0_f_res_10642)
+                  let {defunc_1_f_res_10645 : ({}, f64)} =
+                    fadd64(defunc_1_f_res_10643, defunc_1_f_res_10644)
+                  let {defunc_1_f_res_10646 : ({}, f64)} =
+                    fmul64(x_10617, x_10626)
+                  let {defunc_1_f_res_10647 : ({}, f64)} =
+                    fadd64(x_10627, defunc_1_f_res_10646)
+                  let {exp_arg_10648 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10647)
+                  let {exp_res_10649 : ({}, f64)} =
+                    apply exp64(exp_arg_10648)
+                    : {f64}
+                  let {y_10650 : ({}, f64)} = fadd64(1.0f64, exp_res_10649)
+                  let {defunc_0_f_res_10651 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10650)
+                  let {defunc_0_f_res_10652 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10645)
+                    : {f64}
+                  let {defunc_1_f_res_10653 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10651, defunc_0_f_res_10652)
+                  in {defunc_1_f_res_10653, defunc_1_f_res_10645})
+          let {s_10656 : ({}, [stlen_10548][2i64][d_10536]f64)} =
+            -- Consumes s_10575
+            s_10575 with [i_10574, 0i64,
+                          0i64 :+ d_10536 * 1i64] = defunc_1_map_res_10615
+          let {s_10657 : ({}, [stlen_10548][2i64][d_10536]f64)} =
+            -- Consumes s_10656
+            s_10656 with [i_10574, 1i64,
+                          0i64 :+ d_10536 * 1i64] = defunc_1_map_res_10616
+          in {s_10657, defunc_1_map_res_10615}
+        }
+      let {defunc_2_map2_arg_10658 : ({extraParams_10539}, [d_10536]f64)} =
+        extraParams_10539[1i64, 0i64 :+ d_10536 * 1i64]
+      let {defunc_1_map2_arg_10659 : ({extraParams_10539}, [d_10536]f64)} =
+        extraParams_10539[2i64, 0i64 :+ d_10536 * 1i64]
+      let {defunc_2_reduce_res_10666 : ({}, f64),
+           defunc_1_map_res_10667 : ({}, [d_10536]f64)} =
+        redomap(d_10536,
+                {lstmPredict_res_10573, defunc_2_map2_arg_10658,
+                 defunc_1_map2_arg_10659},
+                {\ {x_10668 : f64, x_10669 : f64} : {f64} ->
+                   let {defunc_1_op_res_10670 : ({}, f64)} =
+                     fadd64(x_10668, x_10669)
+                   in {defunc_1_op_res_10670},
+                 {0.0f64}},
+                \ {x_10671 : f64, x_10672 : f64, x_10673 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_10674 : ({}, f64)} =
+                    fmul64(x_10671, x_10672)
+                  let {defunc_1_f_res_10675 : ({}, f64)} =
+                    fadd64(x_10673, defunc_1_f_res_10674)
+                  let {defunc_0_f_res_10676 : ({}, f64)} =
+                    apply exp64(defunc_1_f_res_10675)
+                    : {f64}
+                  in {defunc_0_f_res_10676, defunc_1_f_res_10675})
+      let {log_arg_10679 : ({}, f64)} =
+        fadd64(2.0f64, defunc_2_reduce_res_10666)
+      let {log_res_10680 : ({}, f64)} =
+        apply log64(log_arg_10679)
+        : {f64}
+      let {tmp_log_10681 : ({}, f64)} = fsub64(0.0f64, log_res_10680)
+      let {i_10682 : ({}, i64)} = add64(1i64, i_10560)
+      let {x_10683 : ({}, bool)} = sle64(0i64, i_10682)
+      let {y_10684 : ({}, bool)} = slt64(i_10682, lenSeq_10537)
+      let {bounds_check_10685 : ({}, bool)} = logand(x_10683, y_10684)
+      let {index_certs_10686 : ({}, unit)} =
+        assert(bounds_check_10685, {"Index [", i_10682 : i64,
+                                    "] out of bounds for array of shape [",
+                                    lenSeq_10537 : i64, "]."},
+               "lstm.fut:57:51-63")
+      let {dotproduct_arg_10687 : ({sequence_10541}, [d_10536]f64)} =
+        #{index_certs_10686}
+        sequence_10541[i_10682, 0i64 :+ d_10536 * 1i64]
+      let {defunc_2_reduce_res_10688 : ({}, f64)} =
+        redomap(d_10536,
+                {defunc_1_map_res_10667, dotproduct_arg_10687},
+                {\ {x_10689 : f64, x_10690 : f64} : {f64} ->
+                   let {defunc_1_op_res_10691 : ({}, f64)} =
+                     fadd64(x_10689, x_10690)
+                   in {defunc_1_op_res_10691},
+                 {0.0f64}},
+                \ {x_10692 : f64, x_10693 : f64} : {f64} ->
+                  let {defunc_0_f_res_10694 : ({}, f64)} =
+                    fadd64(tmp_log_10681, x_10692)
+                  let {defunc_1_f_res_10695 : ({}, f64)} =
+                    fmul64(x_10693, defunc_0_f_res_10694)
+                  in {defunc_1_f_res_10695})
+      let {newTotal_10696 : ({}, f64)} =
+        fadd64(oldTotal_10562, defunc_2_reduce_res_10688)
+      in {lstmPredict_res_10572, newTotal_10696}
+    }
+  let {count_10697 : ({}, i64)} = mul64(d_10536, upper_bound_10557)
+  let {i64_res_10698 : ({}, f64)} = sitofp i64 count_10697 to f64
+  let {negate_arg_10699 : ({}, f64)} = fdiv64(total_10559, i64_res_10698)
+  let {calculate_objective_res_10700 : ({}, f64)} =
+    fsub64(0.0f64, negate_arg_10699)
+  in {calculate_objective_res_10700}
+}
+
+entry("calculate_jacobian",
+      {direct, direct, direct, direct},
+      {direct, direct})
+  entry_calculate_jacobian (stlenx2_10701 : i64, dx4_10702 : i64, d_10703 : i64,
+                            lenSeq_10704 : i64,
+                            mainParams_10705 : [stlenx2_10701][dx4_10702]f64,
+                            extraParams_10706 : [3i64][d_10703]f64,
+                            state0_10707 : [stlenx2_10701][d_10703]f64,
+                            sequence_10708 : [lenSeq_10704][d_10703]f64)
+  : {[stlenx2_10701][dx4_10702]f64, [3i64][d_10703]f64} = {
+  let {y_10709 : ({}, i64)} = smod64(stlenx2_10701, 2i64)
+  let {cond_10710 : ({}, bool)} = eq_i64(0i64, y_10709)
+  let {y_10711 : ({}, i64)} = mul64(4i64, d_10703)
+  let {assert_cond_t_res_10712 : ({}, bool)} = eq_i64(dx4_10702, y_10711)
+  let {x_10713 : ({}, bool)} = logand(cond_10710, assert_cond_t_res_10712)
+  let {assert_c_10714 : ({}, unit)} =
+    assert(x_10713, {"Assertion is false: (0 == stlenx2 % 2 && dx4 == 4 * d)"},
+           "lstm.fut:46:17-69")
+  let {stlen_10715 : ({}, i64)} =
+    #{assert_c_10714}
+    sdiv64(stlenx2_10701, 2i64)
+  let {dim_ok_10716 : ({}, bool)} = eq_i64(y_10711, dx4_10702)
+  let {dim_ok_cert_10717 : ({}, unit)} =
+    assert(dim_ok_10716,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {x_10718 : ({}, i64)} = mul_nw64(2i64, stlen_10715)
+  let {dim_ok_10719 : ({}, bool)} = eq_i64(x_10718, stlenx2_10701)
+  let {dim_ok_cert_10720 : ({}, unit)} =
+    assert(dim_ok_10719,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {dim_ok_cert_10721 : ({}, unit)} =
+    assert(dim_ok_10719,
+           {"new shape has different number of elements than old shape"},
+           "/prelude/array.fut:141:3-33")
+  let {unflatten_res_10722 : ({state0_10707},
+                              [stlen_10715][2i64][d_10703]f64)} =
+    #{dim_ok_cert_10721}
+    reshape((stlen_10715, 2i64, d_10703), state0_10707)
+  let {upper_bound_10723 : ({}, i64)} = sub64(lenSeq_10704, 1i64)
+  let {count_10724 : ({}, i64)} = mul64(d_10703, upper_bound_10723)
+  let {i64_res_10725 : ({}, f64)} = sitofp i64 count_10724 to f64
+  let {x_10729 : ({}, [stlenx2_10701][dx4_10702]f64)} =
+    copy(mainParams_10705)
+  let {x_10730 : ({}, [3i64][d_10703]f64)} =
+    copy(extraParams_10706)
+  let {calculate_objective_res_adj_10873 : ({}, f64)} = 1.0f64
+  let {defunc_0_f_res_10731 : ({x_10729},
+                               [stlen_10715][2i64][4i64][d_10703]f64)} =
+    #{dim_ok_cert_10717, dim_ok_cert_10720}
+    reshape((stlen_10715, 2i64, 4i64, d_10703), x_10729)
+  let {oldState_zero_acc_10878 : ({},
+                                  [upper_bound_10723][stlen_10715][2i64][d_10703]f64)} =
+    scratch(f64, upper_bound_10723, stlen_10715, 2i64, d_10703)
+  let {oldTotal_zero_acc_10879 : ({}, [upper_bound_10723]f64)} =
+    scratch(f64, upper_bound_10723)
+  let {total_10732 : ({}, [stlen_10715][2i64][d_10703]f64),
+       total_10733 : ({}, f64),
+       oldState_acc_10875 : ({},
+                             [upper_bound_10723][stlen_10715][2i64][d_10703]f64),
+       oldTotal_acc_10877 : ({}, [upper_bound_10723]f64)} =
+    -- Consumes oldState_zero_acc_10878, oldTotal_zero_acc_10879
+    loop {oldState_10735 : [stlen_10715][2i64][d_10703]f64,
+          oldTotal_10736 : f64,
+          oldState_acc_10874 : *[upper_bound_10723][stlen_10715][2i64][d_10703]f64,
+          oldTotal_acc_10876 : *[upper_bound_10723]f64} = {unflatten_res_10722,
+                                                           0.0f64,
+                                                           oldState_zero_acc_10878,
+                                                           oldTotal_zero_acc_10879}
+    for i_10734:i64 < upper_bound_10723 do {
+      let {y_10737 : ({}, bool)} = slt64(i_10734, lenSeq_10704)
+      let {index_certs_10738 : ({}, unit)} =
+        assert(y_10737, {"Index [", i_10734 : i64,
+                         "] out of bounds for array of shape [",
+                         lenSeq_10704 : i64, "]."}, "lstm.fut:53:82-92")
+      let {lstmPredict_arg_10739 : ({sequence_10708}, [d_10703]f64)} =
+        #{index_certs_10738}
+        sequence_10708[i_10734, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_map2_arg_10740 : ({x_10730}, [d_10703]f64)} =
+        x_10730[0i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_1_map_res_10741 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {lstmPredict_arg_10739, defunc_2_map2_arg_10740},
+            \ {x_10742 : f64, x_10743 : f64} : {f64} ->
+              let {defunc_1_f_res_10744 : ({}, f64)} = fmul64(x_10742, x_10743)
+              in {defunc_1_f_res_10744})
+      let {defunc_3_map_res_10745 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        replicate([stlen_10715][2i64][d_10703], 0.0f64)
+      let {lstmPredict_res_10746 : ({}, [stlen_10715][2i64][d_10703]f64),
+           lstmPredict_res_10747 : ({}, [d_10703]f64)} =
+        -- Consumes defunc_3_map_res_10745
+        loop {s_10749 : *[stlen_10715][2i64][d_10703]f64,
+              x_10750 : [d_10703]f64} = {defunc_3_map_res_10745,
+                                         defunc_1_map_res_10741}
+        for i_10748:i64 < stlen_10715 do {
+          let {lstmModel_arg_10751 : ({oldState_10735}, [d_10703]f64)} =
+            oldState_10735[i_10748, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {lstmModel_arg_10752 : ({oldState_10735}, [d_10703]f64)} =
+            oldState_10735[i_10748, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10753 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 1i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10754 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 0i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10755 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 1i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10756 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 0i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10757 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 1i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10758 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 0i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10759 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 1i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10760 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10748, 0i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map_res_10789 : ({}, [d_10703]f64),
+               defunc_1_map_res_10790 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {x_10750, defunc_2_map2_arg_10754, defunc_1_map2_arg_10753,
+                 lstmModel_arg_10752, defunc_2_map2_arg_10756,
+                 defunc_1_map2_arg_10755, defunc_2_map2_arg_10760,
+                 defunc_1_map2_arg_10759, lstmModel_arg_10751,
+                 defunc_2_map2_arg_10758, defunc_1_map2_arg_10757},
+                \ {x_10791 : f64, x_10792 : f64, x_10793 : f64, x_10794 : f64,
+                   x_10795 : f64, x_10796 : f64, x_10797 : f64, x_10798 : f64,
+                   x_10799 : f64, x_10800 : f64, x_10801 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_10802 : ({}, f64)} =
+                    fmul64(x_10791, x_10792)
+                  let {defunc_1_f_res_10803 : ({}, f64)} =
+                    fadd64(x_10793, defunc_1_f_res_10802)
+                  let {exp_arg_10804 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10803)
+                  let {exp_res_10805 : ({}, f64)} =
+                    apply exp64(exp_arg_10804)
+                    : {f64}
+                  let {y_10806 : ({}, f64)} = fadd64(1.0f64, exp_res_10805)
+                  let {defunc_0_f_res_10807 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10806)
+                  let {defunc_1_f_res_10808 : ({}, f64)} =
+                    fmul64(x_10794, x_10795)
+                  let {defunc_1_f_res_10809 : ({}, f64)} =
+                    fadd64(x_10796, defunc_1_f_res_10808)
+                  let {exp_arg_10810 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10809)
+                  let {exp_res_10811 : ({}, f64)} =
+                    apply exp64(exp_arg_10810)
+                    : {f64}
+                  let {y_10812 : ({}, f64)} = fadd64(1.0f64, exp_res_10811)
+                  let {defunc_0_f_res_10813 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10812)
+                  let {defunc_1_f_res_10814 : ({}, f64)} =
+                    fmul64(x_10794, x_10797)
+                  let {defunc_1_f_res_10815 : ({}, f64)} =
+                    fadd64(x_10798, defunc_1_f_res_10814)
+                  let {defunc_0_f_res_10816 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10815)
+                    : {f64}
+                  let {defunc_1_f_res_10817 : ({}, f64)} =
+                    fmul64(x_10799, defunc_0_f_res_10807)
+                  let {defunc_1_f_res_10818 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10813, defunc_0_f_res_10816)
+                  let {defunc_1_f_res_10819 : ({}, f64)} =
+                    fadd64(defunc_1_f_res_10817, defunc_1_f_res_10818)
+                  let {defunc_1_f_res_10820 : ({}, f64)} =
+                    fmul64(x_10791, x_10800)
+                  let {defunc_1_f_res_10821 : ({}, f64)} =
+                    fadd64(x_10801, defunc_1_f_res_10820)
+                  let {exp_arg_10822 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10821)
+                  let {exp_res_10823 : ({}, f64)} =
+                    apply exp64(exp_arg_10822)
+                    : {f64}
+                  let {y_10824 : ({}, f64)} = fadd64(1.0f64, exp_res_10823)
+                  let {defunc_0_f_res_10825 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10824)
+                  let {defunc_0_f_res_10826 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10819)
+                    : {f64}
+                  let {defunc_1_f_res_10827 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10825, defunc_0_f_res_10826)
+                  in {defunc_1_f_res_10827, defunc_1_f_res_10819})
+          let {s_10830 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_10749
+            s_10749 with [i_10748, 0i64,
+                          0i64 :+ d_10703 * 1i64] = defunc_1_map_res_10789
+          let {s_10831 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_10830
+            s_10830 with [i_10748, 1i64,
+                          0i64 :+ d_10703 * 1i64] = defunc_1_map_res_10790
+          in {s_10831, defunc_1_map_res_10789}
+        }
+      let {defunc_2_map2_arg_10832 : ({x_10730}, [d_10703]f64)} =
+        x_10730[1i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_1_map2_arg_10833 : ({x_10730}, [d_10703]f64)} =
+        x_10730[2i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_reduce_res_10840 : ({}, f64),
+           defunc_1_map_res_10841 : ({}, [d_10703]f64)} =
+        redomap(d_10703,
+                {lstmPredict_res_10747, defunc_2_map2_arg_10832,
+                 defunc_1_map2_arg_10833},
+                {\ {x_10842 : f64, x_10843 : f64} : {f64} ->
+                   let {defunc_1_op_res_10844 : ({}, f64)} =
+                     fadd64(x_10842, x_10843)
+                   in {defunc_1_op_res_10844},
+                 {0.0f64}},
+                \ {x_10845 : f64, x_10846 : f64, x_10847 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_10848 : ({}, f64)} =
+                    fmul64(x_10845, x_10846)
+                  let {defunc_1_f_res_10849 : ({}, f64)} =
+                    fadd64(x_10847, defunc_1_f_res_10848)
+                  let {defunc_0_f_res_10850 : ({}, f64)} =
+                    apply exp64(defunc_1_f_res_10849)
+                    : {f64}
+                  in {defunc_0_f_res_10850, defunc_1_f_res_10849})
+      let {log_arg_10853 : ({}, f64)} =
+        fadd64(2.0f64, defunc_2_reduce_res_10840)
+      let {log_res_10854 : ({}, f64)} =
+        apply log64(log_arg_10853)
+        : {f64}
+      let {tmp_log_10855 : ({}, f64)} = fsub64(0.0f64, log_res_10854)
+      let {i_10856 : ({}, i64)} = add64(1i64, i_10734)
+      let {x_10857 : ({}, bool)} = sle64(0i64, i_10856)
+      let {y_10858 : ({}, bool)} = slt64(i_10856, lenSeq_10704)
+      let {bounds_check_10859 : ({}, bool)} = logand(x_10857, y_10858)
+      let {index_certs_10860 : ({}, unit)} =
+        assert(bounds_check_10859, {"Index [", i_10856 : i64,
+                                    "] out of bounds for array of shape [",
+                                    lenSeq_10704 : i64, "]."},
+               "lstm.fut:57:51-63")
+      let {dotproduct_arg_10861 : ({sequence_10708}, [d_10703]f64)} =
+        #{index_certs_10860}
+        sequence_10708[i_10856, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_reduce_res_10862 : ({}, f64)} =
+        redomap(d_10703,
+                {defunc_1_map_res_10841, dotproduct_arg_10861},
+                {\ {x_10863 : f64, x_10864 : f64} : {f64} ->
+                   let {defunc_1_op_res_10865 : ({}, f64)} =
+                     fadd64(x_10863, x_10864)
+                   in {defunc_1_op_res_10865},
+                 {0.0f64}},
+                \ {x_10866 : f64, x_10867 : f64} : {f64} ->
+                  let {defunc_0_f_res_10868 : ({}, f64)} =
+                    fadd64(tmp_log_10855, x_10866)
+                  let {defunc_1_f_res_10869 : ({}, f64)} =
+                    fmul64(x_10867, defunc_0_f_res_10868)
+                  in {defunc_1_f_res_10869})
+      let {newTotal_10870 : ({}, f64)} =
+        fadd64(oldTotal_10736, defunc_2_reduce_res_10862)
+      let {loop_acc_10880 : ({},
+                             [upper_bound_10723][stlen_10715][2i64][d_10703]f64)} =
+        -- Consumes oldState_acc_10874
+        oldState_acc_10874 with [i_10734, 0i64 :+ stlen_10715 * 1i64,
+                                 0i64 :+ 2i64 * 1i64,
+                                 0i64 :+ d_10703 * 1i64] = oldState_10735
+      let {loop_acc_10881 : ({}, [upper_bound_10723]f64)} =
+        -- Consumes oldTotal_acc_10876
+        oldTotal_acc_10876 with [i_10734] = oldTotal_10736
+      in {lstmPredict_res_10746, newTotal_10870, loop_acc_10880, loop_acc_10881}
+    }
+  let {negate_arg_10871 : ({}, f64)} = fdiv64(total_10733, i64_res_10725)
+  let {calculate_objective_res_10872 : ({}, f64)} =
+    fsub64(0.0f64, negate_arg_10871)
+  let {binop_x_adj_10882 : ({}, f64)} =
+    fmul64(calculate_objective_res_adj_10873, 1.0f64)
+  let {binop_y_adj_10883 : ({}, f64)} =
+    fmul64(calculate_objective_res_adj_10873, -1.0f64)
+  let {binop_y_10884 : ({}, f64)} = fdiv64(1.0f64, i64_res_10725)
+  let {binop_x_adj_10885 : ({}, f64)} = fmul64(binop_y_adj_10883, binop_y_10884)
+  let {binop_y_10886 : ({}, f64)} = fpow64(i64_res_10725, 2.0f64)
+  let {binop_y_10887 : ({}, f64)} = fdiv64(total_10733, binop_y_10886)
+  let {binop_y_10888 : ({}, f64)} = fsub64(0.0f64, binop_y_10887)
+  let {binop_y_adj_10889 : ({}, f64)} = fmul64(binop_y_adj_10883, binop_y_10888)
+  let {zeroes_10989 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+    #[sequential]
+    replicate([stlen_10715][2i64][d_10703], 0.0f64)
+  let {zeroes_10993 : ({}, i64)} =
+    #[sequential]
+    replicate(, 0i64)
+  let {zeroes_10995 : ({}, i64)} =
+    #[sequential]
+    replicate(, 0i64)
+  let {zeroes_10997 : ({}, [lenSeq_10704][d_10703]f64)} =
+    #[sequential]
+    replicate([lenSeq_10704][d_10703], 0.0f64)
+  let {zeroes_10999 : ({}, i64)} =
+    #[sequential]
+    replicate(, 0i64)
+  let {zeroes_11001 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+    #[sequential]
+    replicate([stlen_10715][2i64][d_10703], 0.0f64)
+  let {zeroes_11003 : ({}, i64)} =
+    #[sequential]
+    replicate(, 0i64)
+  let {zeroes_11005 : ({}, [3i64][d_10703]f64)} =
+    #[sequential]
+    replicate([3i64][d_10703], 0.0f64)
+  let {zeroes_11007 : ({}, [stlen_10715][2i64][4i64][d_10703]f64)} =
+    #[sequential]
+    replicate([stlen_10715][2i64][4i64][d_10703], 0.0f64)
+  let {bound_minus_one_11008 : ({}, i64)} = sub_nw64(upper_bound_10723, 1i64)
+  let {loop_adj_11433 : ({}, [stlen_10715][2i64][d_10703]f64),
+       loop_adj_11434 : ({}, f64),
+       loop_adj_11435 : ({}, i64),
+       loop_adj_11436 : ({}, i64),
+       loop_adj_11437 : ({}, [lenSeq_10704][d_10703]f64),
+       loop_adj_11438 : ({}, i64),
+       loop_adj_11439 : ({}, [stlen_10715][2i64][d_10703]f64),
+       loop_adj_11440 : ({}, i64),
+       loop_adj_11441 : ({}, [3i64][d_10703]f64),
+       loop_adj_11442 : ({}, [stlen_10715][2i64][4i64][d_10703]f64)} =
+    -- Consumes zeroes_10997, zeroes_11001, zeroes_11005, zeroes_11007
+    -- Result of unflatten_res_adj_11000 aliases unflatten_res_adj_11000
+    loop {lstmPredict_res_adj_10990 : [stlen_10715][2i64][d_10703]f64,
+          newTotal_adj_10991 : f64,
+          d_adj_10992 : i64,
+          lenSeq_adj_10994 : i64,
+          sequence_adj_10996 : *[lenSeq_10704][d_10703]f64,
+          stlen_adj_10998 : i64,
+          unflatten_res_adj_11000 : *[stlen_10715][2i64][d_10703]f64,
+          upper_bound_adj_11002 : i64,
+          x_adj_11004 : *[3i64][d_10703]f64,
+          defunc_0_f_res_adj_11006 : *[stlen_10715][2i64][4i64][d_10703]f64} = {zeroes_10989,
+                                                                                binop_x_adj_10885,
+                                                                                zeroes_10993,
+                                                                                zeroes_10995,
+                                                                                zeroes_10997,
+                                                                                zeroes_10999,
+                                                                                zeroes_11001,
+                                                                                zeroes_11003,
+                                                                                zeroes_11005,
+                                                                                zeroes_11007}
+    for i_10890:i64 < upper_bound_10723 do {
+      let {i_11009 : ({}, i64)} = sub64(bound_minus_one_11008, i_10890)
+      let {restore_11431 : ({oldState_acc_10875},
+                            [stlen_10715][2i64][d_10703]f64)} =
+        oldState_acc_10875[i_11009, 0i64 :+ stlen_10715 * 1i64,
+                           0i64 :+ 2i64 * 1i64, 0i64 :+ d_10703 * 1i64]
+      let {restore_11432 : ({}, f64)} =
+        oldTotal_acc_10877[i_11009]
+      let {y_10893 : ({}, bool)} = slt64(i_11009, lenSeq_10704)
+      let {index_certs_10894 : ({}, unit)} =
+        assert(y_10893, {"Index [", i_11009 : i64,
+                         "] out of bounds for array of shape [",
+                         lenSeq_10704 : i64, "]."}, "lstm.fut:53:82-92")
+      let {lstmPredict_arg_10895 : ({sequence_10708}, [d_10703]f64)} =
+        #{index_certs_10894}
+        sequence_10708[i_11009, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_map2_arg_10896 : ({x_10730}, [d_10703]f64)} =
+        x_10730[0i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_1_map_res_10897 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {lstmPredict_arg_10895, defunc_2_map2_arg_10896},
+            \ {x_10898 : f64, x_10899 : f64} : {f64} ->
+              let {defunc_1_f_res_10900 : ({}, f64)} = fmul64(x_10898, x_10899)
+              in {defunc_1_f_res_10900})
+      let {defunc_3_map_res_10901 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        replicate([stlen_10715][2i64][d_10703], 0.0f64)
+      let {s_zero_acc_11014 : ({},
+                               [stlen_10715][stlen_10715][2i64][d_10703]f64)} =
+        scratch(f64, stlen_10715, stlen_10715, 2i64, d_10703)
+      let {x_zero_acc_11015 : ({}, [stlen_10715][d_10703]f64)} =
+        scratch(f64, stlen_10715, d_10703)
+      let {lstmPredict_res_10902 : ({}, [stlen_10715][2i64][d_10703]f64),
+           lstmPredict_res_10903 : ({}, [d_10703]f64),
+           s_acc_11011 : ({}, [stlen_10715][stlen_10715][2i64][d_10703]f64),
+           x_acc_11013 : ({}, [stlen_10715][d_10703]f64)} =
+        -- Consumes defunc_3_map_res_10901, s_zero_acc_11014, x_zero_acc_11015
+        loop {s_10905 : *[stlen_10715][2i64][d_10703]f64,
+              x_10906 : [d_10703]f64,
+              s_acc_11010 : *[stlen_10715][stlen_10715][2i64][d_10703]f64,
+              x_acc_11012 : *[stlen_10715][d_10703]f64} = {defunc_3_map_res_10901,
+                                                           defunc_1_map_res_10897,
+                                                           s_zero_acc_11014,
+                                                           x_zero_acc_11015}
+        for i_10904:i64 < stlen_10715 do {
+          let {s_ad_copy_11016 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            copy(s_10905)
+          let {lstmModel_arg_10907 : ({restore_11431}, [d_10703]f64)} =
+            restore_11431[i_10904, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {lstmModel_arg_10908 : ({restore_11431}, [d_10703]f64)} =
+            restore_11431[i_10904, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10909 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 1i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10910 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 0i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10911 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 1i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10912 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 0i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10913 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 1i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10914 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 0i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_10915 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 1i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_10916 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_10904, 0i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map_res_10917 : ({}, [d_10703]f64),
+               defunc_1_map_res_10918 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {x_10906, defunc_2_map2_arg_10910, defunc_1_map2_arg_10909,
+                 lstmModel_arg_10908, defunc_2_map2_arg_10912,
+                 defunc_1_map2_arg_10911, defunc_2_map2_arg_10916,
+                 defunc_1_map2_arg_10915, lstmModel_arg_10907,
+                 defunc_2_map2_arg_10914, defunc_1_map2_arg_10913},
+                \ {x_10919 : f64, x_10920 : f64, x_10921 : f64, x_10922 : f64,
+                   x_10923 : f64, x_10924 : f64, x_10925 : f64, x_10926 : f64,
+                   x_10927 : f64, x_10928 : f64, x_10929 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_10930 : ({}, f64)} =
+                    fmul64(x_10919, x_10920)
+                  let {defunc_1_f_res_10931 : ({}, f64)} =
+                    fadd64(x_10921, defunc_1_f_res_10930)
+                  let {exp_arg_10932 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10931)
+                  let {exp_res_10933 : ({}, f64)} =
+                    apply exp64(exp_arg_10932)
+                    : {f64}
+                  let {y_10934 : ({}, f64)} = fadd64(1.0f64, exp_res_10933)
+                  let {defunc_0_f_res_10935 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10934)
+                  let {defunc_1_f_res_10936 : ({}, f64)} =
+                    fmul64(x_10922, x_10923)
+                  let {defunc_1_f_res_10937 : ({}, f64)} =
+                    fadd64(x_10924, defunc_1_f_res_10936)
+                  let {exp_arg_10938 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10937)
+                  let {exp_res_10939 : ({}, f64)} =
+                    apply exp64(exp_arg_10938)
+                    : {f64}
+                  let {y_10940 : ({}, f64)} = fadd64(1.0f64, exp_res_10939)
+                  let {defunc_0_f_res_10941 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10940)
+                  let {defunc_1_f_res_10942 : ({}, f64)} =
+                    fmul64(x_10922, x_10925)
+                  let {defunc_1_f_res_10943 : ({}, f64)} =
+                    fadd64(x_10926, defunc_1_f_res_10942)
+                  let {defunc_0_f_res_10944 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10943)
+                    : {f64}
+                  let {defunc_1_f_res_10945 : ({}, f64)} =
+                    fmul64(x_10927, defunc_0_f_res_10935)
+                  let {defunc_1_f_res_10946 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10941, defunc_0_f_res_10944)
+                  let {defunc_1_f_res_10947 : ({}, f64)} =
+                    fadd64(defunc_1_f_res_10945, defunc_1_f_res_10946)
+                  let {defunc_1_f_res_10948 : ({}, f64)} =
+                    fmul64(x_10919, x_10928)
+                  let {defunc_1_f_res_10949 : ({}, f64)} =
+                    fadd64(x_10929, defunc_1_f_res_10948)
+                  let {exp_arg_10950 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_10949)
+                  let {exp_res_10951 : ({}, f64)} =
+                    apply exp64(exp_arg_10950)
+                    : {f64}
+                  let {y_10952 : ({}, f64)} = fadd64(1.0f64, exp_res_10951)
+                  let {defunc_0_f_res_10953 : ({}, f64)} =
+                    fdiv64(1.0f64, y_10952)
+                  let {defunc_0_f_res_10954 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_10947)
+                    : {f64}
+                  let {defunc_1_f_res_10955 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_10953, defunc_0_f_res_10954)
+                  in {defunc_1_f_res_10955, defunc_1_f_res_10947})
+          let {s_10956 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_10905
+            s_10905 with [i_10904, 0i64,
+                          0i64 :+ d_10703 * 1i64] = defunc_1_map_res_10917
+          let {s_10957 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_10956
+            s_10956 with [i_10904, 1i64,
+                          0i64 :+ d_10703 * 1i64] = defunc_1_map_res_10918
+          let {loop_acc_11017 : ({},
+                                 [stlen_10715][stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_acc_11010
+            s_acc_11010 with [i_10904, 0i64 :+ stlen_10715 * 1i64,
+                              0i64 :+ 2i64 * 1i64,
+                              0i64 :+ d_10703 * 1i64] = s_ad_copy_11016
+          let {loop_acc_11018 : ({}, [stlen_10715][d_10703]f64)} =
+            -- Consumes x_acc_11012
+            x_acc_11012 with [i_10904, 0i64 :+ d_10703 * 1i64] = x_10906
+          in {s_10957, defunc_1_map_res_10917, loop_acc_11017, loop_acc_11018}
+        }
+      let {defunc_2_map2_arg_10958 : ({x_10730}, [d_10703]f64)} =
+        x_10730[1i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_1_map2_arg_10959 : ({x_10730}, [d_10703]f64)} =
+        x_10730[2i64, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_reduce_res_map_acc_11019 : ({}, [d_10703]f64),
+           defunc_1_map_res_10961 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {lstmPredict_res_10903, defunc_2_map2_arg_10958,
+             defunc_1_map2_arg_10959},
+            \ {x_10965 : f64, x_10966 : f64, x_10967 : f64} : {f64, f64} ->
+              let {defunc_1_f_res_10968 : ({}, f64)} = fmul64(x_10965, x_10966)
+              let {defunc_1_f_res_10969 : ({}, f64)} =
+                fadd64(x_10967, defunc_1_f_res_10968)
+              let {defunc_0_f_res_10970 : ({}, f64)} =
+                apply exp64(defunc_1_f_res_10969)
+                : {f64}
+              in {defunc_0_f_res_10970, defunc_1_f_res_10969})
+      let {defunc_2_reduce_res_10960 : ({}, f64)} =
+        redomap(d_10703,
+                {defunc_2_reduce_res_map_acc_11019},
+                {\ {x_10962 : f64, x_10963 : f64} : {f64} ->
+                   let {defunc_1_op_res_10964 : ({}, f64)} =
+                     fadd64(x_10962, x_10963)
+                   in {defunc_1_op_res_10964},
+                 {0.0f64}},
+                \ {x_11020 : f64} : {f64} ->
+                  {x_11020})
+      let {log_arg_10971 : ({}, f64)} =
+        fadd64(2.0f64, defunc_2_reduce_res_10960)
+      let {log_res_10972 : ({}, f64)} =
+        apply log64(log_arg_10971)
+        : {f64}
+      let {tmp_log_10973 : ({}, f64)} = fsub64(0.0f64, log_res_10972)
+      let {i_10974 : ({}, i64)} = add64(1i64, i_11009)
+      let {x_10975 : ({}, bool)} = sle64(0i64, i_10974)
+      let {y_10976 : ({}, bool)} = slt64(i_10974, lenSeq_10704)
+      let {bounds_check_10977 : ({}, bool)} = logand(x_10975, y_10976)
+      let {index_certs_10978 : ({}, unit)} =
+        assert(bounds_check_10977, {"Index [", i_10974 : i64,
+                                    "] out of bounds for array of shape [",
+                                    lenSeq_10704 : i64, "]."},
+               "lstm.fut:57:51-63")
+      let {dotproduct_arg_10979 : ({sequence_10708}, [d_10703]f64)} =
+        #{index_certs_10978}
+        sequence_10708[i_10974, 0i64 :+ d_10703 * 1i64]
+      let {defunc_2_reduce_res_map_acc_11021 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {defunc_1_map_res_10961, dotproduct_arg_10979},
+            \ {x_10984 : f64, x_10985 : f64} : {f64} ->
+              let {defunc_0_f_res_10986 : ({}, f64)} =
+                fadd64(tmp_log_10973, x_10984)
+              let {defunc_1_f_res_10987 : ({}, f64)} =
+                fmul64(x_10985, defunc_0_f_res_10986)
+              in {defunc_1_f_res_10987})
+      let {defunc_2_reduce_res_10980 : ({}, f64)} =
+        redomap(d_10703,
+                {defunc_2_reduce_res_map_acc_11021},
+                {\ {x_10981 : f64, x_10982 : f64} : {f64} ->
+                   let {defunc_1_op_res_10983 : ({}, f64)} =
+                     fadd64(x_10981, x_10982)
+                   in {defunc_1_op_res_10983},
+                 {0.0f64}},
+                \ {x_11022 : f64} : {f64} ->
+                  {x_11022})
+      let {newTotal_10988 : ({}, f64)} =
+        fadd64(restore_11432, defunc_2_reduce_res_10980)
+      let {binop_x_adj_11023 : ({}, f64)} = fmul64(newTotal_adj_10991, 1.0f64)
+      let {binop_y_adj_11024 : ({}, f64)} = fmul64(newTotal_adj_10991, 1.0f64)
+      let {binop_y_adj_rep_11025 : ({}, [d_10703]f64)} =
+        replicate([d_10703], binop_y_adj_11024)
+      let {zeroes_11031 : ({}, f64)} =
+        #[sequential]
+        replicate(, 0.0f64)
+      let {map_adjs_11036 : ({}, [d_10703]f64),
+           map_adjs_11037 : ({}, [d_10703]f64),
+           map_adjs_11038 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {defunc_1_map_res_10961, dotproduct_arg_10979,
+             binop_y_adj_rep_11025},
+            \ {x_11027 : f64, x_11028 : f64, map_adj_p_11026 : f64} : {f64, f64,
+                                                                       f64} ->
+              let {defunc_0_f_res_11029 : ({}, f64)} =
+                fadd64(tmp_log_10973, x_11027)
+              let {defunc_1_f_res_11030 : ({}, f64)} =
+                fmul64(x_11028, defunc_0_f_res_11029)
+              let {binop_x_adj_11032 : ({}, f64)} =
+                fmul64(map_adj_p_11026, defunc_0_f_res_11029)
+              let {binop_y_adj_11033 : ({}, f64)} =
+                fmul64(map_adj_p_11026, x_11028)
+              let {binop_x_adj_11034 : ({}, f64)} =
+                fmul64(binop_y_adj_11033, 1.0f64)
+              let {binop_y_adj_11035 : ({}, f64)} =
+                fmul64(binop_y_adj_11033, 1.0f64)
+              in {binop_y_adj_11035, binop_x_adj_11032, binop_x_adj_11034})
+      let {tmp_log_contrib_sum_11043 : ({}, f64)} =
+        redomap(d_10703,
+                {map_adjs_11038},
+                {commutative \ {x_11039 : f64, y_11040 : f64} : {f64} ->
+                   let {binlam_res_11041 : ({}, f64)} = fadd64(x_11039, y_11040)
+                   in {binlam_res_11041},
+                 {0.0f64}},
+                \ {x_11042 : f64} : {f64} ->
+                  {x_11042})
+      let {sequence_slice_11044 : ({sequence_adj_10996}, [d_10703]f64)} =
+        sequence_adj_10996[i_10974, 0i64 :+ d_10703 * 1i64]
+      let {updated_adj_tmp_11048 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {sequence_slice_11044, map_adjs_11037},
+            \ {x_11045 : f64, y_11046 : f64} : {f64} ->
+              let {binlam_res_11047 : ({}, f64)} = fadd64(x_11045, y_11046)
+              in {binlam_res_11047})
+      let {updated_adj_11049 : ({}, [lenSeq_10704][d_10703]f64)} =
+        -- Consumes sequence_adj_10996
+        sequence_adj_10996 with [i_10974,
+                                 0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11048
+      let {zeroes_11050 : ({}, unit)} =
+        #[sequential]
+        replicate(, ())
+      let {zeroes_11051 : ({}, bool)} =
+        #[sequential]
+        replicate(, false)
+      let {binop_x_adj_11052 : ({}, bool)} = logand(zeroes_11051, y_10976)
+      let {binop_y_adj_11053 : ({}, bool)} = logand(zeroes_11051, x_10975)
+      let {contrib_11054 : ({}, i64)} = btoi bool binop_y_adj_11053 to i64
+      let {lenSeq_adj_11055 : ({}, i64)} =
+        add64(lenSeq_adj_10994, contrib_11054)
+      let {contrib_11056 : ({}, i64)} = btoi bool binop_x_adj_11052 to i64
+      let {i_adj_11057 : ({}, i64)} = add64(contrib_11054, contrib_11056)
+      let {binop_x_adj_11058 : ({}, i64)} = mul_nw64(i_adj_11057, 1i64)
+      let {binop_y_adj_11059 : ({}, i64)} = mul_nw64(i_adj_11057, 1i64)
+      let {binop_x_adj_11060 : ({}, f64)} =
+        fmul64(tmp_log_contrib_sum_11043, 1.0f64)
+      let {binop_y_adj_11061 : ({}, f64)} =
+        fmul64(tmp_log_contrib_sum_11043, -1.0f64)
+      let {binop_y_11062 : ({}, f64)} = fdiv64(1.0f64, log_arg_10971)
+      let {contrib_11063 : ({}, f64)} = fmul64(binop_y_adj_11061, binop_y_11062)
+      let {binop_x_adj_11064 : ({}, f64)} = fmul64(contrib_11063, 1.0f64)
+      let {binop_y_adj_11065 : ({}, f64)} = fmul64(contrib_11063, 1.0f64)
+      let {binop_y_adj_rep_11066 : ({}, [d_10703]f64)} =
+        replicate([d_10703], binop_y_adj_11065)
+      let {map_adjs_11082 : ({}, [d_10703]f64),
+           map_adjs_11083 : ({}, [d_10703]f64),
+           map_adjs_11084 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {lstmPredict_res_10903, defunc_2_map2_arg_10958,
+             defunc_1_map2_arg_10959, binop_y_adj_rep_11066, map_adjs_11036},
+            \ {x_11069 : f64, x_11070 : f64, x_11071 : f64,
+               map_adj_p_11067 : f64, map_adj_p_11068 : f64} : {f64, f64,
+                                                                f64} ->
+              let {defunc_1_f_res_11072 : ({}, f64)} = fmul64(x_11069, x_11070)
+              let {defunc_1_f_res_11073 : ({}, f64)} =
+                fadd64(x_11071, defunc_1_f_res_11072)
+              let {defunc_0_f_res_11074 : ({}, f64)} =
+                apply exp64(defunc_1_f_res_11073)
+                : {f64}
+              let {binop_y_11075 : ({}, f64)} =
+                apply exp64(defunc_1_f_res_11073)
+                : {f64}
+              let {contrib_11076 : ({}, f64)} =
+                fmul64(map_adj_p_11067, binop_y_11075)
+              let {defunc_1_f_res_adj_11077 : ({}, f64)} =
+                fadd64(map_adj_p_11068, contrib_11076)
+              let {binop_x_adj_11078 : ({}, f64)} =
+                fmul64(defunc_1_f_res_adj_11077, 1.0f64)
+              let {binop_y_adj_11079 : ({}, f64)} =
+                fmul64(defunc_1_f_res_adj_11077, 1.0f64)
+              let {binop_x_adj_11080 : ({}, f64)} =
+                fmul64(binop_y_adj_11079, x_11070)
+              let {binop_y_adj_11081 : ({}, f64)} =
+                fmul64(binop_y_adj_11079, x_11069)
+              in {binop_x_adj_11080, binop_y_adj_11081, binop_x_adj_11078})
+      let {x_slice_11085 : ({x_adj_11004}, [d_10703]f64)} =
+        x_adj_11004[2i64, 0i64 :+ d_10703 * 1i64]
+      let {updated_adj_tmp_11089 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {x_slice_11085, map_adjs_11084},
+            \ {x_11086 : f64, y_11087 : f64} : {f64} ->
+              let {binlam_res_11088 : ({}, f64)} = fadd64(x_11086, y_11087)
+              in {binlam_res_11088})
+      let {updated_adj_11090 : ({}, [3i64][d_10703]f64)} =
+        -- Consumes x_adj_11004
+        x_adj_11004 with [2i64, 0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11089
+      let {x_slice_11091 : ({updated_adj_11090}, [d_10703]f64)} =
+        updated_adj_11090[1i64, 0i64 :+ d_10703 * 1i64]
+      let {updated_adj_tmp_11095 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {x_slice_11091, map_adjs_11083},
+            \ {x_11092 : f64, y_11093 : f64} : {f64} ->
+              let {binlam_res_11094 : ({}, f64)} = fadd64(x_11092, y_11093)
+              in {binlam_res_11094})
+      let {updated_adj_11096 : ({}, [3i64][d_10703]f64)} =
+        -- Consumes updated_adj_11090
+        updated_adj_11090 with [1i64,
+                                0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11095
+      let {zeroes_11157 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        #[sequential]
+        replicate([stlen_10715][2i64][d_10703], 0.0f64)
+      let {zeroes_11159 : ({}, [d_10703]f64)} =
+        #[sequential]
+        replicate([d_10703], 0.0f64)
+      let {zeroes_11161 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        #[sequential]
+        replicate([stlen_10715][2i64][d_10703], 0.0f64)
+      let {bound_minus_one_11162 : ({}, i64)} = sub_nw64(stlen_10715, 1i64)
+      let {loop_adj_11360 : ({}, [stlen_10715][2i64][d_10703]f64),
+           loop_adj_11361 : ({}, [d_10703]f64),
+           loop_adj_11362 : ({}, i64),
+           loop_adj_11363 : ({}, i64),
+           loop_adj_11364 : ({}, [stlen_10715][2i64][4i64][d_10703]f64),
+           loop_adj_11365 : ({}, [stlen_10715][2i64][d_10703]f64),
+           loop_adj_11366 : ({}, [d_10703]f64),
+           loop_adj_11367 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        -- Consumes lstmPredict_res_adj_10990, defunc_0_f_res_adj_11006, zeroes_11157, zeroes_11159, zeroes_11161
+        -- Result of defunc_1_map_res_adj_11158 aliases defunc_1_map_res_adj_11158
+        -- Result of defunc_3_map_res_adj_11160 aliases defunc_3_map_res_adj_11160
+        loop {s_adj_11151 : *[stlen_10715][2i64][d_10703]f64,
+              defunc_1_map_res_adj_11152 : [d_10703]f64,
+              d_adj_11153 : i64,
+              stlen_adj_11154 : i64,
+              defunc_0_f_res_adj_11155 : *[stlen_10715][2i64][4i64][d_10703]f64,
+              oldState_adj_11156 : *[stlen_10715][2i64][d_10703]f64,
+              defunc_1_map_res_adj_11158 : *[d_10703]f64,
+              defunc_3_map_res_adj_11160 : *[stlen_10715][2i64][d_10703]f64} = {lstmPredict_res_adj_10990,
+                                                                                map_adjs_11082,
+                                                                                d_adj_10992,
+                                                                                stlen_adj_10998,
+                                                                                defunc_0_f_res_adj_11006,
+                                                                                zeroes_11157,
+                                                                                zeroes_11159,
+                                                                                zeroes_11161}
+        for i_11097:i64 < stlen_10715 do {
+          let {i_11163 : ({}, i64)} = sub64(bound_minus_one_11162, i_11097)
+          let {restore_11357 : ({s_acc_11011},
+                                [stlen_10715][2i64][d_10703]f64)} =
+            s_acc_11011[i_11163, 0i64 :+ stlen_10715 * 1i64,
+                        0i64 :+ 2i64 * 1i64, 0i64 :+ d_10703 * 1i64]
+          let {restore_copy_11358 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            copy(restore_11357)
+          let {restore_11359 : ({x_acc_11013}, [d_10703]f64)} =
+            x_acc_11013[i_11163, 0i64 :+ d_10703 * 1i64]
+          let {lstmModel_arg_11100 : ({restore_11431}, [d_10703]f64)} =
+            restore_11431[i_11163, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {lstmModel_arg_11101 : ({restore_11431}, [d_10703]f64)} =
+            restore_11431[i_11163, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_11102 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 1i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_11103 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 0i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_11104 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 1i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_11105 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 0i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_11106 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 1i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_11107 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 0i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map2_arg_11108 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 1i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_2_map2_arg_11109 : ({defunc_0_f_res_10731},
+                                          [d_10703]f64)} =
+            defunc_0_f_res_10731[i_11163, 0i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {defunc_1_map_res_11110 : ({}, [d_10703]f64),
+               defunc_1_map_res_11111 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {restore_11359, defunc_2_map2_arg_11103,
+                 defunc_1_map2_arg_11102, lstmModel_arg_11101,
+                 defunc_2_map2_arg_11105, defunc_1_map2_arg_11104,
+                 defunc_2_map2_arg_11109, defunc_1_map2_arg_11108,
+                 lstmModel_arg_11100, defunc_2_map2_arg_11107,
+                 defunc_1_map2_arg_11106},
+                \ {x_11112 : f64, x_11113 : f64, x_11114 : f64, x_11115 : f64,
+                   x_11116 : f64, x_11117 : f64, x_11118 : f64, x_11119 : f64,
+                   x_11120 : f64, x_11121 : f64, x_11122 : f64} : {f64, f64} ->
+                  let {defunc_1_f_res_11123 : ({}, f64)} =
+                    fmul64(x_11112, x_11113)
+                  let {defunc_1_f_res_11124 : ({}, f64)} =
+                    fadd64(x_11114, defunc_1_f_res_11123)
+                  let {exp_arg_11125 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11124)
+                  let {exp_res_11126 : ({}, f64)} =
+                    apply exp64(exp_arg_11125)
+                    : {f64}
+                  let {y_11127 : ({}, f64)} = fadd64(1.0f64, exp_res_11126)
+                  let {defunc_0_f_res_11128 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11127)
+                  let {defunc_1_f_res_11129 : ({}, f64)} =
+                    fmul64(x_11115, x_11116)
+                  let {defunc_1_f_res_11130 : ({}, f64)} =
+                    fadd64(x_11117, defunc_1_f_res_11129)
+                  let {exp_arg_11131 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11130)
+                  let {exp_res_11132 : ({}, f64)} =
+                    apply exp64(exp_arg_11131)
+                    : {f64}
+                  let {y_11133 : ({}, f64)} = fadd64(1.0f64, exp_res_11132)
+                  let {defunc_0_f_res_11134 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11133)
+                  let {defunc_1_f_res_11135 : ({}, f64)} =
+                    fmul64(x_11115, x_11118)
+                  let {defunc_1_f_res_11136 : ({}, f64)} =
+                    fadd64(x_11119, defunc_1_f_res_11135)
+                  let {defunc_0_f_res_11137 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11136)
+                    : {f64}
+                  let {defunc_1_f_res_11138 : ({}, f64)} =
+                    fmul64(x_11120, defunc_0_f_res_11128)
+                  let {defunc_1_f_res_11139 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_11134, defunc_0_f_res_11137)
+                  let {defunc_1_f_res_11140 : ({}, f64)} =
+                    fadd64(defunc_1_f_res_11138, defunc_1_f_res_11139)
+                  let {defunc_1_f_res_11141 : ({}, f64)} =
+                    fmul64(x_11112, x_11121)
+                  let {defunc_1_f_res_11142 : ({}, f64)} =
+                    fadd64(x_11122, defunc_1_f_res_11141)
+                  let {exp_arg_11143 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11142)
+                  let {exp_res_11144 : ({}, f64)} =
+                    apply exp64(exp_arg_11143)
+                    : {f64}
+                  let {y_11145 : ({}, f64)} = fadd64(1.0f64, exp_res_11144)
+                  let {defunc_0_f_res_11146 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11145)
+                  let {defunc_0_f_res_11147 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11140)
+                    : {f64}
+                  let {defunc_1_f_res_11148 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_11146, defunc_0_f_res_11147)
+                  in {defunc_1_f_res_11148, defunc_1_f_res_11140})
+          let {s_11149 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes restore_copy_11358
+            restore_copy_11358 with [i_11163, 0i64,
+                                     0i64 :+ d_10703 * 1i64] = defunc_1_map_res_11110
+          let {s_11150 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_11149
+            s_11149 with [i_11163, 1i64,
+                          0i64 :+ d_10703 * 1i64] = defunc_1_map_res_11111
+          let {update_val_adj_11164 : ({s_adj_11151}, [d_10703]f64)} =
+            s_adj_11151[i_11163, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {update_val_adj_copy_11165 : ({}, [d_10703]f64)} =
+            copy(update_val_adj_11164)
+          let {update_zero_11166 : ({}, [d_10703]f64)} =
+            replicate([d_10703], 0.0f64)
+          let {update_src_adj_11167 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes s_adj_11151
+            s_adj_11151 with [i_11163, 1i64,
+                              0i64 :+ d_10703 * 1i64] = update_zero_11166
+          let {update_val_adj_11168 : ({update_src_adj_11167}, [d_10703]f64)} =
+            update_src_adj_11167[i_11163, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {update_val_adj_copy_11169 : ({}, [d_10703]f64)} =
+            copy(update_val_adj_11168)
+          let {defunc_1_map_res_adj_11173 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_1_map_res_adj_11152, update_val_adj_copy_11169},
+                \ {x_11170 : f64, y_11171 : f64} : {f64} ->
+                  let {binlam_res_11172 : ({}, f64)} = fadd64(x_11170, y_11171)
+                  in {binlam_res_11172})
+          let {update_zero_11174 : ({}, [d_10703]f64)} =
+            replicate([d_10703], 0.0f64)
+          let {update_src_adj_11175 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes update_src_adj_11167
+            update_src_adj_11167 with [i_11163, 0i64,
+                                       0i64 :+ d_10703 * 1i64] = update_zero_11174
+          let {map_adjs_11286 : ({}, [d_10703]f64),
+               map_adjs_11287 : ({}, [d_10703]f64),
+               map_adjs_11288 : ({}, [d_10703]f64),
+               map_adjs_11289 : ({}, [d_10703]f64),
+               map_adjs_11290 : ({}, [d_10703]f64),
+               map_adjs_11291 : ({}, [d_10703]f64),
+               map_adjs_11292 : ({}, [d_10703]f64),
+               map_adjs_11293 : ({}, [d_10703]f64),
+               map_adjs_11294 : ({}, [d_10703]f64),
+               map_adjs_11295 : ({}, [d_10703]f64),
+               map_adjs_11296 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {restore_11359, defunc_2_map2_arg_11103,
+                 defunc_1_map2_arg_11102, lstmModel_arg_11101,
+                 defunc_2_map2_arg_11105, defunc_1_map2_arg_11104,
+                 defunc_2_map2_arg_11109, defunc_1_map2_arg_11108,
+                 lstmModel_arg_11100, defunc_2_map2_arg_11107,
+                 defunc_1_map2_arg_11106, defunc_1_map_res_adj_11173,
+                 update_val_adj_copy_11165},
+                \ {x_11178 : f64, x_11179 : f64, x_11180 : f64, x_11181 : f64,
+                   x_11182 : f64, x_11183 : f64, x_11184 : f64, x_11185 : f64,
+                   x_11186 : f64, x_11187 : f64, x_11188 : f64,
+                   map_adj_p_11176 : f64, map_adj_p_11177 : f64} : {f64, f64,
+                                                                    f64, f64,
+                                                                    f64, f64,
+                                                                    f64, f64,
+                                                                    f64, f64,
+                                                                    f64} ->
+                  let {defunc_1_f_res_11189 : ({}, f64)} =
+                    fmul64(x_11178, x_11179)
+                  let {defunc_1_f_res_11190 : ({}, f64)} =
+                    fadd64(x_11180, defunc_1_f_res_11189)
+                  let {exp_arg_11191 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11190)
+                  let {exp_res_11192 : ({}, f64)} =
+                    apply exp64(exp_arg_11191)
+                    : {f64}
+                  let {y_11193 : ({}, f64)} = fadd64(1.0f64, exp_res_11192)
+                  let {defunc_0_f_res_11194 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11193)
+                  let {defunc_1_f_res_11195 : ({}, f64)} =
+                    fmul64(x_11181, x_11182)
+                  let {defunc_1_f_res_11196 : ({}, f64)} =
+                    fadd64(x_11183, defunc_1_f_res_11195)
+                  let {exp_arg_11197 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11196)
+                  let {exp_res_11198 : ({}, f64)} =
+                    apply exp64(exp_arg_11197)
+                    : {f64}
+                  let {y_11199 : ({}, f64)} = fadd64(1.0f64, exp_res_11198)
+                  let {defunc_0_f_res_11200 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11199)
+                  let {defunc_1_f_res_11201 : ({}, f64)} =
+                    fmul64(x_11181, x_11184)
+                  let {defunc_1_f_res_11202 : ({}, f64)} =
+                    fadd64(x_11185, defunc_1_f_res_11201)
+                  let {defunc_0_f_res_11203 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11202)
+                    : {f64}
+                  let {defunc_1_f_res_11204 : ({}, f64)} =
+                    fmul64(x_11186, defunc_0_f_res_11194)
+                  let {defunc_1_f_res_11205 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_11200, defunc_0_f_res_11203)
+                  let {defunc_1_f_res_11206 : ({}, f64)} =
+                    fadd64(defunc_1_f_res_11204, defunc_1_f_res_11205)
+                  let {defunc_1_f_res_11207 : ({}, f64)} =
+                    fmul64(x_11178, x_11187)
+                  let {defunc_1_f_res_11208 : ({}, f64)} =
+                    fadd64(x_11188, defunc_1_f_res_11207)
+                  let {exp_arg_11209 : ({}, f64)} =
+                    fsub64(0.0f64, defunc_1_f_res_11208)
+                  let {exp_res_11210 : ({}, f64)} =
+                    apply exp64(exp_arg_11209)
+                    : {f64}
+                  let {y_11211 : ({}, f64)} = fadd64(1.0f64, exp_res_11210)
+                  let {defunc_0_f_res_11212 : ({}, f64)} =
+                    fdiv64(1.0f64, y_11211)
+                  let {defunc_0_f_res_11213 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11206)
+                    : {f64}
+                  let {defunc_1_f_res_11214 : ({}, f64)} =
+                    fmul64(defunc_0_f_res_11212, defunc_0_f_res_11213)
+                  let {binop_x_adj_11215 : ({}, f64)} =
+                    fmul64(map_adj_p_11176, defunc_0_f_res_11213)
+                  let {binop_y_adj_11216 : ({}, f64)} =
+                    fmul64(map_adj_p_11176, defunc_0_f_res_11212)
+                  let {binop_x_11217 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11206)
+                    : {f64}
+                  let {binop_y_11218 : ({}, f64)} =
+                    fpow64(binop_x_11217, 2.0f64)
+                  let {binop_y_11219 : ({}, f64)} =
+                    fsub64(1.0f64, binop_y_11218)
+                  let {contrib_11220 : ({}, f64)} =
+                    fmul64(binop_y_adj_11216, binop_y_11219)
+                  let {defunc_1_f_res_adj_11221 : ({}, f64)} =
+                    fadd64(map_adj_p_11177, contrib_11220)
+                  let {binop_y_11222 : ({}, f64)} = fdiv64(1.0f64, y_11211)
+                  let {binop_x_adj_11223 : ({}, f64)} =
+                    fmul64(binop_x_adj_11215, binop_y_11222)
+                  let {binop_y_11224 : ({}, f64)} = fpow64(y_11211, 2.0f64)
+                  let {binop_y_11225 : ({}, f64)} =
+                    fdiv64(1.0f64, binop_y_11224)
+                  let {binop_y_11226 : ({}, f64)} =
+                    fsub64(0.0f64, binop_y_11225)
+                  let {binop_y_adj_11227 : ({}, f64)} =
+                    fmul64(binop_x_adj_11215, binop_y_11226)
+                  let {binop_x_adj_11228 : ({}, f64)} =
+                    fmul64(binop_y_adj_11227, 1.0f64)
+                  let {binop_y_adj_11229 : ({}, f64)} =
+                    fmul64(binop_y_adj_11227, 1.0f64)
+                  let {binop_y_11230 : ({}, f64)} =
+                    apply exp64(exp_arg_11209)
+                    : {f64}
+                  let {contrib_11231 : ({}, f64)} =
+                    fmul64(binop_y_adj_11229, binop_y_11230)
+                  let {binop_x_adj_11232 : ({}, f64)} =
+                    fmul64(contrib_11231, 1.0f64)
+                  let {binop_y_adj_11233 : ({}, f64)} =
+                    fmul64(contrib_11231, -1.0f64)
+                  let {binop_x_adj_11234 : ({}, f64)} =
+                    fmul64(binop_y_adj_11233, 1.0f64)
+                  let {binop_y_adj_11235 : ({}, f64)} =
+                    fmul64(binop_y_adj_11233, 1.0f64)
+                  let {binop_x_adj_11236 : ({}, f64)} =
+                    fmul64(binop_y_adj_11235, x_11187)
+                  let {binop_y_adj_11237 : ({}, f64)} =
+                    fmul64(binop_y_adj_11235, x_11178)
+                  let {binop_x_adj_11238 : ({}, f64)} =
+                    fmul64(defunc_1_f_res_adj_11221, 1.0f64)
+                  let {binop_y_adj_11239 : ({}, f64)} =
+                    fmul64(defunc_1_f_res_adj_11221, 1.0f64)
+                  let {binop_x_adj_11240 : ({}, f64)} =
+                    fmul64(binop_y_adj_11239, defunc_0_f_res_11203)
+                  let {binop_y_adj_11241 : ({}, f64)} =
+                    fmul64(binop_y_adj_11239, defunc_0_f_res_11200)
+                  let {binop_x_adj_11242 : ({}, f64)} =
+                    fmul64(binop_x_adj_11238, defunc_0_f_res_11194)
+                  let {binop_y_adj_11243 : ({}, f64)} =
+                    fmul64(binop_x_adj_11238, x_11186)
+                  let {binop_x_11244 : ({}, f64)} =
+                    apply tanh64(defunc_1_f_res_11202)
+                    : {f64}
+                  let {binop_y_11245 : ({}, f64)} =
+                    fpow64(binop_x_11244, 2.0f64)
+                  let {binop_y_11246 : ({}, f64)} =
+                    fsub64(1.0f64, binop_y_11245)
+                  let {contrib_11247 : ({}, f64)} =
+                    fmul64(binop_y_adj_11241, binop_y_11246)
+                  let {binop_x_adj_11248 : ({}, f64)} =
+                    fmul64(contrib_11247, 1.0f64)
+                  let {binop_y_adj_11249 : ({}, f64)} =
+                    fmul64(contrib_11247, 1.0f64)
+                  let {binop_x_adj_11250 : ({}, f64)} =
+                    fmul64(binop_y_adj_11249, x_11184)
+                  let {binop_y_adj_11251 : ({}, f64)} =
+                    fmul64(binop_y_adj_11249, x_11181)
+                  let {binop_y_11252 : ({}, f64)} = fdiv64(1.0f64, y_11199)
+                  let {binop_x_adj_11253 : ({}, f64)} =
+                    fmul64(binop_x_adj_11240, binop_y_11252)
+                  let {binop_y_11254 : ({}, f64)} = fpow64(y_11199, 2.0f64)
+                  let {binop_y_11255 : ({}, f64)} =
+                    fdiv64(1.0f64, binop_y_11254)
+                  let {binop_y_11256 : ({}, f64)} =
+                    fsub64(0.0f64, binop_y_11255)
+                  let {binop_y_adj_11257 : ({}, f64)} =
+                    fmul64(binop_x_adj_11240, binop_y_11256)
+                  let {binop_x_adj_11258 : ({}, f64)} =
+                    fmul64(binop_y_adj_11257, 1.0f64)
+                  let {binop_y_adj_11259 : ({}, f64)} =
+                    fmul64(binop_y_adj_11257, 1.0f64)
+                  let {binop_y_11260 : ({}, f64)} =
+                    apply exp64(exp_arg_11197)
+                    : {f64}
+                  let {contrib_11261 : ({}, f64)} =
+                    fmul64(binop_y_adj_11259, binop_y_11260)
+                  let {binop_x_adj_11262 : ({}, f64)} =
+                    fmul64(contrib_11261, 1.0f64)
+                  let {binop_y_adj_11263 : ({}, f64)} =
+                    fmul64(contrib_11261, -1.0f64)
+                  let {binop_x_adj_11264 : ({}, f64)} =
+                    fmul64(binop_y_adj_11263, 1.0f64)
+                  let {binop_y_adj_11265 : ({}, f64)} =
+                    fmul64(binop_y_adj_11263, 1.0f64)
+                  let {binop_x_adj_11266 : ({}, f64)} =
+                    fmul64(binop_y_adj_11265, x_11182)
+                  let {binop_y_adj_11267 : ({}, f64)} =
+                    fmul64(binop_y_adj_11265, x_11181)
+                  let {x_adj_11268 : ({}, f64)} =
+                    fadd64(binop_x_adj_11250, binop_x_adj_11266)
+                  let {binop_y_11269 : ({}, f64)} = fdiv64(1.0f64, y_11193)
+                  let {binop_x_adj_11270 : ({}, f64)} =
+                    fmul64(binop_y_adj_11243, binop_y_11269)
+                  let {binop_y_11271 : ({}, f64)} = fpow64(y_11193, 2.0f64)
+                  let {binop_y_11272 : ({}, f64)} =
+                    fdiv64(1.0f64, binop_y_11271)
+                  let {binop_y_11273 : ({}, f64)} =
+                    fsub64(0.0f64, binop_y_11272)
+                  let {binop_y_adj_11274 : ({}, f64)} =
+                    fmul64(binop_y_adj_11243, binop_y_11273)
+                  let {binop_x_adj_11275 : ({}, f64)} =
+                    fmul64(binop_y_adj_11274, 1.0f64)
+                  let {binop_y_adj_11276 : ({}, f64)} =
+                    fmul64(binop_y_adj_11274, 1.0f64)
+                  let {binop_y_11277 : ({}, f64)} =
+                    apply exp64(exp_arg_11191)
+                    : {f64}
+                  let {contrib_11278 : ({}, f64)} =
+                    fmul64(binop_y_adj_11276, binop_y_11277)
+                  let {binop_x_adj_11279 : ({}, f64)} =
+                    fmul64(contrib_11278, 1.0f64)
+                  let {binop_y_adj_11280 : ({}, f64)} =
+                    fmul64(contrib_11278, -1.0f64)
+                  let {binop_x_adj_11281 : ({}, f64)} =
+                    fmul64(binop_y_adj_11280, 1.0f64)
+                  let {binop_y_adj_11282 : ({}, f64)} =
+                    fmul64(binop_y_adj_11280, 1.0f64)
+                  let {binop_x_adj_11283 : ({}, f64)} =
+                    fmul64(binop_y_adj_11282, x_11179)
+                  let {binop_y_adj_11284 : ({}, f64)} =
+                    fmul64(binop_y_adj_11282, x_11178)
+                  let {x_adj_11285 : ({}, f64)} =
+                    fadd64(binop_x_adj_11236, binop_x_adj_11283)
+                  in {x_adj_11285, binop_y_adj_11284, binop_x_adj_11281,
+                      x_adj_11268, binop_y_adj_11267, binop_x_adj_11264,
+                      binop_y_adj_11251, binop_x_adj_11248, binop_x_adj_11242,
+                      binop_y_adj_11237, binop_x_adj_11234})
+          let {defunc_0_f_res_slice_11297 : ({defunc_0_f_res_adj_11155},
+                                             [d_10703]f64)} =
+            defunc_0_f_res_adj_11155[i_11163, 0i64, 3i64,
+                                     0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11301 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11297, map_adjs_11292},
+                \ {x_11298 : f64, y_11299 : f64} : {f64} ->
+                  let {binlam_res_11300 : ({}, f64)} = fadd64(x_11298, y_11299)
+                  in {binlam_res_11300})
+          let {updated_adj_11302 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes defunc_0_f_res_adj_11155
+            defunc_0_f_res_adj_11155 with [i_11163, 0i64, 3i64,
+                                           0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11301
+          let {defunc_0_f_res_slice_11303 : ({updated_adj_11302},
+                                             [d_10703]f64)} =
+            updated_adj_11302[i_11163, 1i64, 3i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11307 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11303, map_adjs_11293},
+                \ {x_11304 : f64, y_11305 : f64} : {f64} ->
+                  let {binlam_res_11306 : ({}, f64)} = fadd64(x_11304, y_11305)
+                  in {binlam_res_11306})
+          let {updated_adj_11308 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11302
+            updated_adj_11302 with [i_11163, 1i64, 3i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11307
+          let {defunc_0_f_res_slice_11309 : ({updated_adj_11308},
+                                             [d_10703]f64)} =
+            updated_adj_11308[i_11163, 0i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11313 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11309, map_adjs_11295},
+                \ {x_11310 : f64, y_11311 : f64} : {f64} ->
+                  let {binlam_res_11312 : ({}, f64)} = fadd64(x_11310, y_11311)
+                  in {binlam_res_11312})
+          let {updated_adj_11314 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11308
+            updated_adj_11308 with [i_11163, 0i64, 2i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11313
+          let {defunc_0_f_res_slice_11315 : ({updated_adj_11314},
+                                             [d_10703]f64)} =
+            updated_adj_11314[i_11163, 1i64, 2i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11319 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11315, map_adjs_11296},
+                \ {x_11316 : f64, y_11317 : f64} : {f64} ->
+                  let {binlam_res_11318 : ({}, f64)} = fadd64(x_11316, y_11317)
+                  in {binlam_res_11318})
+          let {updated_adj_11320 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11314
+            updated_adj_11314 with [i_11163, 1i64, 2i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11319
+          let {defunc_0_f_res_slice_11321 : ({updated_adj_11320},
+                                             [d_10703]f64)} =
+            updated_adj_11320[i_11163, 0i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11325 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11321, map_adjs_11290},
+                \ {x_11322 : f64, y_11323 : f64} : {f64} ->
+                  let {binlam_res_11324 : ({}, f64)} = fadd64(x_11322, y_11323)
+                  in {binlam_res_11324})
+          let {updated_adj_11326 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11320
+            updated_adj_11320 with [i_11163, 0i64, 1i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11325
+          let {defunc_0_f_res_slice_11327 : ({updated_adj_11326},
+                                             [d_10703]f64)} =
+            updated_adj_11326[i_11163, 1i64, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11331 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11327, map_adjs_11291},
+                \ {x_11328 : f64, y_11329 : f64} : {f64} ->
+                  let {binlam_res_11330 : ({}, f64)} = fadd64(x_11328, y_11329)
+                  in {binlam_res_11330})
+          let {updated_adj_11332 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11326
+            updated_adj_11326 with [i_11163, 1i64, 1i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11331
+          let {defunc_0_f_res_slice_11333 : ({updated_adj_11332},
+                                             [d_10703]f64)} =
+            updated_adj_11332[i_11163, 0i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11337 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11333, map_adjs_11287},
+                \ {x_11334 : f64, y_11335 : f64} : {f64} ->
+                  let {binlam_res_11336 : ({}, f64)} = fadd64(x_11334, y_11335)
+                  in {binlam_res_11336})
+          let {updated_adj_11338 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11332
+            updated_adj_11332 with [i_11163, 0i64, 0i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11337
+          let {defunc_0_f_res_slice_11339 : ({updated_adj_11338},
+                                             [d_10703]f64)} =
+            updated_adj_11338[i_11163, 1i64, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11343 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {defunc_0_f_res_slice_11339, map_adjs_11288},
+                \ {x_11340 : f64, y_11341 : f64} : {f64} ->
+                  let {binlam_res_11342 : ({}, f64)} = fadd64(x_11340, y_11341)
+                  in {binlam_res_11342})
+          let {updated_adj_11344 : ({},
+                                    [stlen_10715][2i64][4i64][d_10703]f64)} =
+            -- Consumes updated_adj_11338
+            updated_adj_11338 with [i_11163, 1i64, 0i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11343
+          let {oldState_slice_11345 : ({oldState_adj_11156}, [d_10703]f64)} =
+            oldState_adj_11156[i_11163, 0i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11349 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {oldState_slice_11345, map_adjs_11289},
+                \ {x_11346 : f64, y_11347 : f64} : {f64} ->
+                  let {binlam_res_11348 : ({}, f64)} = fadd64(x_11346, y_11347)
+                  in {binlam_res_11348})
+          let {updated_adj_11350 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes oldState_adj_11156
+            oldState_adj_11156 with [i_11163, 0i64,
+                                     0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11349
+          let {oldState_slice_11351 : ({updated_adj_11350}, [d_10703]f64)} =
+            updated_adj_11350[i_11163, 1i64, 0i64 :+ d_10703 * 1i64]
+          let {updated_adj_tmp_11355 : ({}, [d_10703]f64)} =
+            map(d_10703,
+                {oldState_slice_11351, map_adjs_11294},
+                \ {x_11352 : f64, y_11353 : f64} : {f64} ->
+                  let {binlam_res_11354 : ({}, f64)} = fadd64(x_11352, y_11353)
+                  in {binlam_res_11354})
+          let {updated_adj_11356 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+            -- Consumes updated_adj_11350
+            updated_adj_11350 with [i_11163, 1i64,
+                                    0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11355
+          in {update_src_adj_11175, map_adjs_11286, d_adj_11153,
+              stlen_adj_11154, updated_adj_11344, updated_adj_11356,
+              defunc_1_map_res_adj_11158, defunc_3_map_res_adj_11160}
+        }
+      let {d_adj_11368 : ({}, i64)} = add64(d_adj_10992, loop_adj_11362)
+      let {stlen_adj_11369 : ({}, i64)} = add64(stlen_adj_10998, loop_adj_11363)
+      let {defunc_0_f_res_adj_11382 : ({},
+                                       [stlen_10715][2i64][4i64][d_10703]f64)} =
+        map(stlen_10715,
+            {defunc_0_f_res_adj_11006, loop_adj_11364},
+            \ {xs_11370 : [2i64][4i64][d_10703]f64,
+               ys_11371 : [2i64][4i64][d_10703]f64}
+            : {[2i64][4i64][d_10703]f64} ->
+              let {lam_map_11381 : ({}, [2i64][4i64][d_10703]f64)} =
+                map(2i64,
+                    {xs_11370, ys_11371},
+                    \ {xs_11372 : [4i64][d_10703]f64,
+                       ys_11373 : [4i64][d_10703]f64} : {[4i64][d_10703]f64} ->
+                      let {lam_map_11380 : ({}, [4i64][d_10703]f64)} =
+                        map(4i64,
+                            {xs_11372, ys_11373},
+                            \ {xs_11374 : [d_10703]f64, ys_11375 : [d_10703]f64}
+                            : {[d_10703]f64} ->
+                              let {lam_map_11379 : ({}, [d_10703]f64)} =
+                                map(d_10703,
+                                    {xs_11374, ys_11375},
+                                    \ {x_11376 : f64, y_11377 : f64} : {f64} ->
+                                      let {binlam_res_11378 : ({}, f64)} =
+                                        fadd64(x_11376, y_11377)
+                                      in {binlam_res_11378})
+                              in {lam_map_11379})
+                      in {lam_map_11380})
+              in {lam_map_11381})
+      let {defunc_1_map_res_adj_11386 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {loop_adj_11361, loop_adj_11366},
+            \ {x_11383 : f64, y_11384 : f64} : {f64} ->
+              let {binlam_res_11385 : ({}, f64)} = fadd64(x_11383, y_11384)
+              in {binlam_res_11385})
+      let {defunc_3_map_res_adj_11396 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+        map(stlen_10715,
+            {loop_adj_11360, loop_adj_11367},
+            \ {xs_11387 : [2i64][d_10703]f64, ys_11388 : [2i64][d_10703]f64}
+            : {[2i64][d_10703]f64} ->
+              let {lam_map_11395 : ({}, [2i64][d_10703]f64)} =
+                map(2i64,
+                    {xs_11387, ys_11388},
+                    \ {xs_11389 : [d_10703]f64, ys_11390 : [d_10703]f64}
+                    : {[d_10703]f64} ->
+                      let {lam_map_11394 : ({}, [d_10703]f64)} =
+                        map(d_10703,
+                            {xs_11389, ys_11390},
+                            \ {x_11391 : f64, y_11392 : f64} : {f64} ->
+                              let {binlam_res_11393 : ({}, f64)} =
+                                fadd64(x_11391, y_11392)
+                              in {binlam_res_11393})
+                      in {lam_map_11394})
+              in {lam_map_11395})
+      let {y_11400 : ({}, i64)} = mul_nw64(d_10703, 1i64)
+      let {y_11401 : ({}, i64)} = mul_nw64(2i64, y_11400)
+      let {rep_size_11402 : ({}, i64)} = mul_nw64(stlen_10715, y_11401)
+      let {defunc_3_map_res_adj_flat_11403 : ({defunc_3_map_res_adj_11396},
+                                              [rep_size_11402]f64)} =
+        reshape((rep_size_11402), defunc_3_map_res_adj_11396)
+      let {rep_contrib_11405 : ({}, f64)} =
+        redomap(rep_size_11402,
+                {defunc_3_map_res_adj_flat_11403},
+                {commutative \ {x_11397 : f64, y_11398 : f64} : {f64} ->
+                   let {binlam_res_11399 : ({}, f64)} = fadd64(x_11397, y_11398)
+                   in {binlam_res_11399},
+                 {0.0f64}},
+                \ {x_11404 : f64} : {f64} ->
+                  {x_11404})
+      let {map_adjs_11412 : ({}, [d_10703]f64),
+           map_adjs_11413 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {lstmPredict_arg_10895, defunc_2_map2_arg_10896,
+             defunc_1_map_res_adj_11386},
+            \ {x_11407 : f64, x_11408 : f64, map_adj_p_11406 : f64} : {f64,
+                                                                       f64} ->
+              let {defunc_1_f_res_11409 : ({}, f64)} = fmul64(x_11407, x_11408)
+              let {binop_x_adj_11410 : ({}, f64)} =
+                fmul64(map_adj_p_11406, x_11408)
+              let {binop_y_adj_11411 : ({}, f64)} =
+                fmul64(map_adj_p_11406, x_11407)
+              in {binop_x_adj_11410, binop_y_adj_11411})
+      let {x_slice_11414 : ({updated_adj_11096}, [d_10703]f64)} =
+        updated_adj_11096[0i64, 0i64 :+ d_10703 * 1i64]
+      let {updated_adj_tmp_11418 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {x_slice_11414, map_adjs_11413},
+            \ {x_11415 : f64, y_11416 : f64} : {f64} ->
+              let {binlam_res_11417 : ({}, f64)} = fadd64(x_11415, y_11416)
+              in {binlam_res_11417})
+      let {updated_adj_11419 : ({}, [3i64][d_10703]f64)} =
+        -- Consumes updated_adj_11096
+        updated_adj_11096 with [0i64,
+                                0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11418
+      let {sequence_slice_11420 : ({updated_adj_11049}, [d_10703]f64)} =
+        updated_adj_11049[i_11009, 0i64 :+ d_10703 * 1i64]
+      let {updated_adj_tmp_11424 : ({}, [d_10703]f64)} =
+        map(d_10703,
+            {sequence_slice_11420, map_adjs_11412},
+            \ {x_11421 : f64, y_11422 : f64} : {f64} ->
+              let {binlam_res_11423 : ({}, f64)} = fadd64(x_11421, y_11422)
+              in {binlam_res_11423})
+      let {updated_adj_11425 : ({}, [lenSeq_10704][d_10703]f64)} =
+        -- Consumes updated_adj_11049
+        updated_adj_11049 with [i_11009,
+                                0i64 :+ d_10703 * 1i64] = updated_adj_tmp_11424
+      let {zeroes_11426 : ({}, unit)} =
+        #[sequential]
+        replicate(, ())
+      let {zeroes_11427 : ({}, bool)} =
+        #[sequential]
+        replicate(, false)
+      let {contrib_11428 : ({}, i64)} = btoi bool zeroes_11427 to i64
+      let {i_adj_11429 : ({}, i64)} = add64(binop_y_adj_11059, contrib_11428)
+      let {lenSeq_adj_11430 : ({}, i64)} =
+        add64(lenSeq_adj_11055, contrib_11428)
+      in {loop_adj_11365, binop_x_adj_11023, d_adj_11368, lenSeq_adj_11430,
+          updated_adj_11425, stlen_adj_11369, unflatten_res_adj_11000,
+          upper_bound_adj_11002, updated_adj_11419, defunc_0_f_res_adj_11382}
+    }
+  let {unflatten_res_adj_11452 : ({}, [stlen_10715][2i64][d_10703]f64)} =
+    map(stlen_10715,
+        {loop_adj_11433, loop_adj_11439},
+        \ {xs_11443 : [2i64][d_10703]f64, ys_11444 : [2i64][d_10703]f64}
+        : {[2i64][d_10703]f64} ->
+          let {lam_map_11451 : ({}, [2i64][d_10703]f64)} =
+            map(2i64,
+                {xs_11443, ys_11444},
+                \ {xs_11445 : [d_10703]f64, ys_11446 : [d_10703]f64}
+                : {[d_10703]f64} ->
+                  let {lam_map_11450 : ({}, [d_10703]f64)} =
+                    map(d_10703,
+                        {xs_11445, ys_11446},
+                        \ {x_11447 : f64, y_11448 : f64} : {f64} ->
+                          let {binlam_res_11449 : ({}, f64)} =
+                            fadd64(x_11447, y_11448)
+                          in {binlam_res_11449})
+                  in {lam_map_11450})
+          in {lam_map_11451})
+  let {adj_reshape_11453 : ({loop_adj_11442}, [stlenx2_10701][dx4_10702]f64)} =
+    reshape((stlenx2_10701, dx4_10702), loop_adj_11442)
+  let {defunc_6_vjp2_res_10726 : ({}, f64)} = calculate_objective_res_10872
+  let {defunc_6_vjp2_res_10727 : ({adj_reshape_11453},
+                                  [stlenx2_10701][dx4_10702]f64)} =
+    adj_reshape_11453
+  let {defunc_6_vjp2_res_10728 : ({loop_adj_11441}, [3i64][d_10703]f64)} =
+    loop_adj_11441
+  in {defunc_6_vjp2_res_10727, defunc_6_vjp2_res_10728}
+}
