@@ -72,4 +72,18 @@ entry calculate_jacobian [stlenx2] [dx4] [lenSeq] [d]
                           (sequence: [lenSeq][d]f64) : []f64 =
   let (x,y) =
     vjp (\(x, y) -> calculate_objective x y state0 sequence) (mainParams, extraParams) 1
-  in flatten x ++ flatten y -- Maybe not right.
+  in flatten x ++ flatten y
+
+-- ==
+-- entry: calculate_objective
+-- compiled input @ data/lstm_l2_c1024_d14.in output @ data/lstm_l2_c1024_d14.F
+-- compiled input @ data/lstm_l2_c4096_d14.in
+-- compiled input @ data/lstm_l4_c1024_d14.in
+-- compiled input @ data/lstm_l4_c4096_d14.in
+
+-- ==
+-- entry: calculate_jacobian
+-- compiled input @ data/lstm_l2_c1024_d14.in output @ data/lstm_l2_c1024_d14.J
+-- compiled input @ data/lstm_l2_c4096_d14.in
+-- compiled input @ data/lstm_l4_c1024_d14.in
+-- compiled input @ data/lstm_l4_c4096_d14.in
