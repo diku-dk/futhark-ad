@@ -3,8 +3,6 @@ import "utils"
 -- ToDo: I am currently trying to get from Till the four real-world
 --       sparse datasets: BBC, movielens, NY Times, SCRNA. 
 
-let fix_iter = false
-
 let closest_point (p1: (i64,f32)) (p2: (i64,f32)): (i64,f32) =
   if p1.1 < p2.1 then p1 else p2
 
@@ -30,17 +28,20 @@ let initCenters [nnz][np1]
 
   in  cluster_centers
 
-entry kmeans_seq_rows [nnz][np1]
-        (threshold: i32) (k: i32) (max_iterations: i32)
+let kmeans_seq_rows [nnz][np1]
+        (fix_iter: bool) (threshold: f32) (max_iterations: i64) (k: i64)
         (values: [nnz]f32) (indices_data: [nnz]i64) 
-        (pointers: [np1]i64) (columns: i64) =
-                                      
-    let k = i64.i32 k
+        (pointers: [np1]i64) =
+
     let n = np1 - 1
+
+    let columns = 1 + reduce (i64.max) (-1) indices_data
     
     let shape = map (\i -> pointers[i+1] - pointers[i]) (iota n) -- this is shape
-    let flags = mkFlagArray shape 0i32 (replicate n 1i32)  :> [nnz]i32
-    let row_indices = scan (+) 0 flags |> map (\x -> i64.i32 x-1)
+    let flags = mkFlagArray shape false (replicate n true)  :> [nnz]bool
+    let row_indices =
+         map2 (\f i -> if f && (i!=0) then 1i64 else 0i64) flags (indices flags)
+      |> scan (+) 0i64
 
     let cluster_centers =
       initCenters k columns pointers row_indices values indices_data
@@ -51,7 +52,7 @@ entry kmeans_seq_rows [nnz][np1]
     -- let max_iterations = 1
     let i = 0
 
-    let (new_membership,cluster_centers,delta,i) =
+    let (_new_membership,cluster_centers,delta,i) =
         loop (membership, cluster_centers, delta, i)
         while (if fix_iter then true else delta > threshold) && i < max_iterations do
             -- For each point, find the cluster with the closest centroid.
@@ -118,8 +119,9 @@ entry kmeans_seq_rows [nnz][np1]
             let new_delta =
                   map2 (==) membership new_membership |>
                   map (\b -> if b then 0 else 1) |>
-                  i32.sum
+                  i64.sum
+            let new_delta = (f32.i64 new_delta) / (f32.i64 n)
                   
             in (new_membership, new_centers, new_delta, i+1)
 
-    in (delta, i, map f32.sum cluster_centers, (take 20 new_membership))
+    in (delta, i, cluster_centers)
