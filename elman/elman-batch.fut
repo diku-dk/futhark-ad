@@ -14,7 +14,7 @@ let myfilter 't [n] (dummy: t) (pred: t -> bool) (arr: [n]t) : []t =
   let indssc = scan (+) 0 indsT
             |> opaque
   let len = indssc[n-1]
-  let inds = map2 (\ii v -> if v == 1 then ii-1 else -1) indssc indsT
+  let inds = map2 (\ii v -> if v == 1 then ii-1 else -1) indssc indsT |> opaque
   in  scatter (replicate len dummy) inds arr
 
 let scatter3D [q][q'][layers][d]
@@ -33,7 +33,7 @@ let scatter3D [q][q'][layers][d]
               let k3  = k_r - k2_0 * d
               in  (k1*qd + k2*d + k3, hs_updt[k1,k2_0,k3])
       )
-  let (inds, vals) = unzip indvals
+  let (inds, vals) = unzip indvals |> opaque
   let hs_flat = flatten (flatten hs)
   let hs_flat' = scatter hs_flat inds vals
   in  unflatten layers q (unflatten (layers*q) d hs_flat')
