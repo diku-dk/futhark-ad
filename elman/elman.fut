@@ -43,7 +43,7 @@ let elman_predict [d][layers]
   let x0 = input
   let state_ini = replicate layers <| replicate d 0
   let (state', x') =
-    loop (s, x) = (state_ini, x0)
+    loop (#[true_dep]s, x) = (state_ini, x0)
     for i < layers do
       let (h, h') = elman_layer x last_hs[i] wh[i] u[i] bh[i]
       let s[i] = h'
@@ -55,6 +55,7 @@ let elman_rnn [n][d][layers]
           (wh: [layers][d][d]real) (u: [layers][d][d]real) (bh: [layers][d]real)
           : [d]real =
   let h'' =
+    #[stripmine(2)]
     loop (h) = (first_hs)
     for i < n-1 do
       let (_, h') = elman_predict inputs[i] h wh u bh
