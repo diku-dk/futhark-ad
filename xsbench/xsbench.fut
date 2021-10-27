@@ -243,6 +243,6 @@ entry diff n_isotopes n_gridpoints grid_type hash_bins lookups
   let (inputs, sd) =
     unpack n_isotopes n_gridpoints grid_type hash_bins lookups
            num_nucs concs mats nuclide_grid index_grid unionized_energy_array
-  in vjp (run_event_based_simulation inputs.lookups inputs)
-         sd
-         (replicate inputs.lookups (1,1,1,1,1))
+  in (vjp (run_event_based_simulation inputs.lookups inputs)
+          sd
+          (replicate inputs.lookups (1,1,1,1,1))).nuclide_grid

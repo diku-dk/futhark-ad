@@ -297,6 +297,6 @@ entry diff lookups doppler
            n_windows poles_ls poles_cs windows_f64s windows_i32s pseudo_K0RS num_nucs mats concs =
   let (input, sd) = unpack lookups doppler
                            n_windows poles_ls poles_cs windows_f64s windows_i32s pseudo_K0RS num_nucs mats concs
-  in vjp (run_event_based_simulation input.lookups input.doppler)
-         sd
-         (replicate input.lookups (1,1,1,1))
+  in (vjp (run_event_based_simulation input.lookups input.doppler)
+          sd
+          (replicate input.lookups (1,1,1,1))).poles
