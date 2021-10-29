@@ -6,14 +6,14 @@
 -- no_rtx2080 no_k40 no_gtx780 input @ data/large.in.gz
 -- output { 952131i64 }
 
-type nuclide_grid_point =
-  { energy: f64,
-    total_xs: f64,
-    elastic_xs: f64,
-    absorbtion_xs: f64,
-    fission_xs: f64,
-    nu_fission_xs: f64
-  }
+type nuclide_grid_point = [6]f64
+
+let gp_energy p = p[0] :f64
+let gp_total_xs p = p[1] : f64
+let gp_elastic_xs p = p[2] : f64
+let gp_absorbtion_xs p = p[3] : f64
+let gp_fission_xs p = p[4] : f64
+let gp_nu_fission_xs p = p[5] : f64
 
 type~ simulation_data [length_num_nucs]
                       [length_unionized_energy_array]
@@ -52,7 +52,7 @@ let grid_search_nuclide [n] (quarry: f64) (A: [n]nuclide_grid_point) (low: i64) 
   let upperLimit = high
   in (.0) <| loop (lowerLimit, upperLimit) for _i < 64-i64.clz n do
              let examinationPoint = lowerLimit + ( (upperLimit - lowerLimit) / 2 )
-             in if A[examinationPoint].energy > quarry
+             in if gp_energy A[examinationPoint] > quarry
 		   then (lowerLimit, examinationPoint)
 		   else (examinationPoint, upperLimit)
 
@@ -79,8 +79,8 @@ let calculate_micro_xs [n_isotopes] [n_gridpoints]
       let u_high = if idx == hash_bins - 1
                    then i32.i64 n_gridpoints - 1
                    else index_data[idx+1,nuc]
-      let e_low = nuclide_grids[nuc,u_low].energy
-      let e_high = nuclide_grids[nuc,u_high].energy
+      let e_low = gp_energy nuclide_grids[nuc,u_low]
+      let e_high = gp_energy nuclide_grids[nuc,u_high]
       let lower = if p_energy <= e_low
                   then 0
                   else if p_energy >= e_high
@@ -92,12 +92,12 @@ let calculate_micro_xs [n_isotopes] [n_gridpoints]
   let high_idx = low_idx + 1
   let high = nuclide_grids[nuc,high_idx]
   let low = nuclide_grids[nuc,low_idx]
-  let f = (high.energy - p_energy) / (high.energy - low.energy)
-  in (high.total_xs - f * (high.total_xs - low.total_xs),
-      high.elastic_xs - f * (high.elastic_xs - low.elastic_xs),
-      high.absorbtion_xs - f * (high.absorbtion_xs - low.absorbtion_xs),
-      high.fission_xs - f * (high.fission_xs - low.fission_xs),
-      high.nu_fission_xs - f * (high.nu_fission_xs - low.nu_fission_xs))
+  let f = (gp_energy high - p_energy) / (gp_energy high - gp_energy low)
+  in (gp_total_xs high - f * (gp_total_xs high - gp_total_xs low),
+      gp_elastic_xs high - f * (gp_elastic_xs high - gp_elastic_xs low),
+      gp_absorbtion_xs high - f * (gp_absorbtion_xs high - gp_absorbtion_xs low),
+      gp_fission_xs high - f * (gp_fission_xs high - gp_fission_xs low),
+      gp_nu_fission_xs high - f * (gp_nu_fission_xs high - gp_nu_fission_xs low))
 
 let calculate_macro_xs [n_isotopes] [n_gridpoints] [max_num_nucs]
                        (p_energy: f64) (mat: i32)
@@ -219,8 +219,7 @@ let unpack n_isotopes n_gridpoints grid_type hash_bins lookups
                   case _ -> #hash
   let inputs = {n_isotopes, n_gridpoints, grid_type, hash_bins, lookups}
   let unpack_nuclide (arr: [6]f64) =
-    {energy = arr[0], total_xs = arr[1], elastic_xs = arr[2],
-     absorbtion_xs = arr[3], fission_xs = arr[4], nu_fission_xs = arr[5]}
+    arr
   let nuclide_grid = map (map unpack_nuclide) nuclide_grid
   let sd =
     {num_nucs, concs, mats, nuclide_grid, index_grid, unionized_energy_array}
@@ -243,6 +242,7 @@ entry diff n_isotopes n_gridpoints grid_type hash_bins lookups
   let (inputs, sd) =
     unpack n_isotopes n_gridpoints grid_type hash_bins lookups
            num_nucs concs mats nuclide_grid index_grid unionized_energy_array
-  in (vjp (run_event_based_simulation inputs.lookups inputs)
+  in #[unsafe]
+     (vjp (run_event_based_simulation inputs.lookups inputs)
           sd
           (replicate inputs.lookups (1,1,1,1,1))).nuclide_grid
