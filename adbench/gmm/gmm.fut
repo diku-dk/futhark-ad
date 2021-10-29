@@ -8,13 +8,13 @@ let snd (_,y) = y
 
 let sumBy 'a (f : a -> f64)  (xs : []a) : f64 = map f xs |> f64.sum
 
-let l2normSq (v : []f64) = map (** 2) v |> f64.sum
+let l2normSq (v : []f64) = map (\x -> x * x) v |> f64.sum
 
 let logsumexp = sumBy (f64.exp) >-> f64.log
 
 let vMinus [m] (xs : [m]f64) (ys : [m]f64) : [m]f64 = zip xs ys |> map (\(x, y) -> x - y)
 
-let frobeniusNormSq (mat : [][]f64) = flatten mat |> map (**2) |> f64.sum
+let frobeniusNormSq (mat : [][]f64) = flatten mat |> map (\x -> x * x) |> f64.sum
 
 let unpackQ [d] (logdiag: [d]f64) (lt: []f64) : [d][d]f64  =
   tabulate_2d d d (\i j ->
