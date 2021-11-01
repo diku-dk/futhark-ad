@@ -3,16 +3,29 @@ let zero = 0f64
 let sum  = f64.sum
 let log  = f64.log
 let tanh = f64.tanh
-let exp  = f64.exp 
+let exp  = f64.exp
+let fromi64 = f64.i64
 
 let dotproduct [n] (a: [n]real) (b: [n]real) : real =
-    sum <| map2 (*) a b
+    map2 (*) a b |> sum
 
 let matvec [m][n] (mat: [m][n]real) (vec: [n]real) =
     map (dotproduct vec) mat
 
+let matmul [m][n][q] (ass: [m][q]real) (bss: [q][n]real) : [m][n]real =
+    map (matvec (transpose bss)) ass
+
 let sigmoid (x: real) : real =
     1.0 / (1.0 + exp(-x))
+
+let meanSqr [n][d]
+            (ys_hat : [n][d]real) 
+            (ys :     [n][d]real) : real =
+  let s  = map2 zip ys_hat ys
+        |> flatten
+        |> map (\(a, b) -> (a - b) * (a - b))
+        |> sum
+  in  s / (fromi64 (n*d))
 
 let step [hx4] [h] [d]
          (wght_ih: [hx4][d]real)
@@ -25,7 +38,7 @@ let step [hx4] [h] [d]
             |> map2 (+) bias 
             |> map2 (+) (matvec wght_hh hidn_st)
               
-  let gates'     = assert (4*h == 4xh)
+  let gates'     = assert (4*h == hx4)
                           (unflatten 4 h gates)
   let ingate     = map sigmoid (gates'[0])
   let forgetgate = map sigmoid (gates'[1])
@@ -38,24 +51,19 @@ let step [hx4] [h] [d]
 
   in  (hidn_st', cell_st')
 
--- `n` is the length of a time series;
--- `d` is the dimensionality of a point of a time series;
--- `h` is the length of the hidden layer
--- `layers` is the number of layers (simplified, not used)
-let lstmObj [n][d][h]
-            (input: [n][d]real)
-            (wght_ih: [4][h][d]real)
-            (wght_hh: [4][h][d]real)
+let lstmPrd [n][d][h][hx4]
+            (input:     [n][d]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
             (wght_y :    [h][d]real)
-            (bias_ih: [4][h]real)
-            (bias_hh: [4][h]real)
-            (bias_y :    [d]real)
-            (extraParams: [3][d]real)
-            (hidn_st0: [h]real)
-            (cell_st0: [h]real) =
+            (bias:        [hx4]real)
+            (bias_y :       [d]real)
+            (hidn_st0:      [h]real)
+            (cell_st0:      [h]real)
+          : ([n][d]real, [n][h]real, [h]real) =
   -- rnn component
   let hidn_stack0 = replicate n (replicate h zero)
-  let (hidn_stack, (hidn_st, cell_st) =
+  let (hidn_stack, (_, cell_st)) =
     loop (hidn_stack, (hidn_st, cell_st)) = (hidn_stack0, (hidn_st0, cell_st0))
     for i < n do
         let (hidn_st', cell_st') = step wght_ih wght_hh bias input[i] (hidn_st, cell_st)
@@ -66,44 +74,22 @@ let lstmObj [n][d][h]
   in  (y_hat, hidn_stack, cell_st)
   -- hidden_states[:, h-1] instead of hidn_stack in the return?
 
-----------------------------------------------------
---- We simplify a bit and support only one layer ---
---- if multiple layers are to be supported, the  ---
---- first wght_ih0 : [hx4][d]real, and the others---
---- wght_ihs : [layers-1][hx4][h]real.           ---
---- The wght_hhs : [layers][hx4][d]real.         ---
---- Hence the first invocation of `lstmModel`    ---
----   should be treated separately outside the   ---
----   loop because the last loop-param `x` ion   ---
----   changes dimension from [d] to [h] after the---
----   first iteration.
-----------------------------------------------------
-
-let lstmPredict [h] [hx4] [d]
-                (input_el:[d]real)
-                (wght_ih: [hx4][d]real)
-                (wght_hh: [hx4][h]real)
-                (bias:    [hx4]real)
-                --(mainParams: [slen][2][4][d]real)
-                (extraParams: [3][d]real)
-                (hidn_st: [h][d]real, cell_st: [h][d]real)
-                --(state: [slen][2][d]real)
-               : ([d]f64, ([h][d]real, [h][d]real)) = -- innermost size: h or d?
-    let x0 = map2 (*) input_el extraParams[0]
-    let hidn_st_0 = replicate h <| replicate h zero
-    let cell_st_0 = replicate h <| replicate h zero
-    let state_0 = (hidn_st_0, cell_st_0)
-
-    -- CONFLICT ON THE SIZE OF x: should it be [d] or [h]???
-    let (state'', x') =
-        loop ((hidn_st', cell_st'), x) = (state_0, x0)
-        for i < h do
-            let (h_st, c_st) = lstmModel x wght_ih wght_hh bias (hidn_st[i], cell_st[i])
-            let hidn_st'[i] = h_st
-            let cell_st'[i] = c_st
-            in  ((hidn_st', cell_st'), h_st)
-
-    let x'' = map2 (*) x' extraParams[1] |>
-              map2 (+) extraParams[2]
-
-    in  (x'', state'')
+-- `bs`  is the batch size (for the moment `bs = 1`)
+-- `n`   is the length of a time series;
+-- `d`   is the dimensionality of a point of a time series;
+-- `h`   is the length of the hidden layer
+-- `hx4` is `4 x h`
+-- `layers`: not used, i.e., we assume the number of layers is 1
+let lstmObj [n][d][h][hx4]
+            (input:     [n][d]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
+            (wght_y :    [h][d]real)
+            (bias:        [hx4]real)
+            (bias_y :       [d]real)
+            (hidn_st0:      [h]real)
+            (cell_st0:      [h]real)
+          : real =
+  let (input_hat, _, _) = lstmPrd input wght_ih wght_hh wght_y bias bias_y hidn_st0 cell_st0
+  let loss = meanSqr input_hat input
+  in  loss
