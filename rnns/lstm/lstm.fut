@@ -1,10 +1,10 @@
-type real= f32
-let zero = 0f32
-let sum  = f32.sum
-let log  = f32.log
-let tanh = f32.tanh
-let exp  = f32.exp
-let fromi64 = f32.i64
+type real= f64
+let zero = 0f64
+let sum  = f64.sum
+let log  = f64.log
+let tanh = f64.tanh
+let exp  = f64.exp
+let fromi64 = f64.i64
 
 let dotproduct [n] (a: [n]real) (b: [n]real) : real =
     map2 (*) a b |> sum
@@ -55,20 +55,22 @@ let step [bs] [hx4] [h] [d]
 
   in  (hidn_st', cell_st')
 
-let lstmPrd [bs][n][d][h][hx4]
+entry lstmPrd [bs][n][d][h][hx4]
             (input: [n][bs][d]real)
-            (wght_ih: [hx4][d]real)
-            (wght_hh: [hx4][h]real)
-            (wght_y:    [h][d]real)
-            (bias:       [hx4]real)
-            (bias_y:       [d]real)
             (hidn_st0: [h][bs]real)
             (cell_st0: [h][bs]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
+            (bias_ih:    [hx4]real)
+            (bias_hh:    [hx4]real)
+            (wght_y:    [h][d]real)
+            (bias_y:       [d]real)
           : ([n][bs][d]real, [n][bs][h]real, [h][bs]real) =
   -- rnn component
   let hidn_stack0  = replicate bs zero
                   |> replicate h
                   |> replicate n
+  let bias = map2 (+) bias_ih bias_hh
 
   -- hidn_stack0 :: [n][bs][h]
   let (hidn_stack, (_, cell_st)) =
@@ -103,13 +105,14 @@ let lstmObj [bs][n][d][h][hx4]
             (cell_st0: [h][bs]real)
             ( wght_ih: [hx4][d]real
             , wght_hh: [hx4][h]real
+            , bias_ih:    [hx4]real
+            , bias_hh:    [hx4]real
             , wght_y:    [h][d]real
-            , bias:       [hx4]real
             , bias_y:       [d]real
-            )
+	    )
           : real =
   let (input_hat, _, _) =
-        lstmPrd input wght_ih wght_hh wght_y bias bias_y hidn_st0 cell_st0
+        lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y
   let y_y_hat  = map2 (map2 zip) input_hat input
               |> flatten
               |> flatten
@@ -123,16 +126,18 @@ let main [bs][n][d][h][hx4]
          --- to-diff params
          (wght_ih: [hx4][d]real)
          (wght_hh: [hx4][h]real)
+         (bias_ih:    [hx4]real)
+         (bias_hh:    [hx4]real)
          (wght_y:    [h][d]real)
-         (bias_h:    [hx4]real)
          (bias_y:       [d]real)
          --- adjoints ---
          (loss_adj : real) :
          ( [hx4][d]real
          , [hx4][h]real
-         , [h][d]real
          , [hx4]real
+         , [hx4]real
+         , [h][d]real
          , [d]real
          ) =
   vjp (lstmObj input hidn_st0 cell_st0)
-      (wght_ih, wght_hh, wght_y, bias_h, bias_y) loss_adj
+      (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
