@@ -67,7 +67,7 @@ class RNNLSTM(torch.nn.Module):
     for name, p in self.linear.named_parameters():
       d[name] = p
 
-    filename = (f"variables-{self.n}"
+    filename = (f"lstm-{self.n}"
                 f"-{self.num_features}"
                 f"-{self.length}"
                 f"-{self.num_layers}"
