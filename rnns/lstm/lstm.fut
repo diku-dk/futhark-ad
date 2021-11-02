@@ -55,7 +55,7 @@ let step [bs] [hx4] [h] [d]
 
   in  (hidn_st', cell_st')
 
-entry lstmPrd [bs][n][d][h][hx4]
+let lstmPrd [bs][n][d][h][hx4]
             (input: [n][bs][d]real)
             (hidn_st0: [h][bs]real)
             (cell_st0: [h][bs]real)
@@ -90,6 +90,18 @@ entry lstmPrd [bs][n][d][h][hx4]
 
   in  (y_hat, hidn_stack', cell_st)
   -- hidden_states[:, h-1] instead of hidn_stack in the return?
+
+entry lstmPrd_ [bs][n][d][h][hx4]
+            (input: [n][bs][d]real)
+            (hidn_st0: [h][bs]real)
+            (cell_st0: [h][bs]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
+            (bias_ih:    [hx4]real)
+            (bias_hh:    [hx4]real)
+            (wght_y:    [h][d]real)
+            (bias_y:       [d]real)
+  = (lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y).0
 
 ----------------------------------------------------------------
 -- `bs`  is the batch size (for the moment `bs = 1`)          --
