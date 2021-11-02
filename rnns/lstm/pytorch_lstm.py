@@ -59,31 +59,31 @@ class RNNLSTM(torch.nn.Module):
     with open(filename + ".json",'w') as f:
        json.dump({name: p.tolist() for name, p in d.items()}, f)
     
-    with open(filename + ".in",'w') as f:
+    with open(filename + ".in",'wb') as f:
       for name, p in d.items():
         print(name)
         if self.n == 1:
           if name == 'input':
-              futhark_data.dump(p.detach().numpy()[:,0,:],f, False)
+              futhark_data.dump(p.detach().numpy()[:,0,:],f, True)
           elif name == 'hidn_st0':
               print(p.detach().numpy()[0,0,:])
-              futhark_data.dump(p.detach().numpy()[0,0,:],f, False)
+              futhark_data.dump(p.detach().numpy()[0,0,:],f, True)
           elif name == 'cell_st0':
-              futhark_data.dump(p.detach().numpy()[0,0,:],f, False)
+              futhark_data.dump(p.detach().numpy()[0,0,:],f, True)
           elif name == 'weight':
-              futhark_data.dump(p.detach().numpy().T,f, False)
+              futhark_data.dump(p.detach().numpy().T,f, True)
           else:
-              futhark_data.dump(p.detach().numpy(),f, False)
+              futhark_data.dump(p.detach().numpy(),f, True)
         else:
           if name == 'hidn_st0':
               print(p.detach().numpy()[0,:,:].T)
-              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, False)
+              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, True)
           elif name == 'cell_st0':
-              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, False)
+              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, True)
           elif name == 'weight':
-              futhark_data.dump(p.detach().numpy().T,f, False)
+              futhark_data.dump(p.detach().numpy().T,f, True)
           else:
-              futhark_data.dump(p.detach().numpy(),f, False)
+              futhark_data.dump(p.detach().numpy(),f, True)
     
   def forward(self, input_):
    outputs, _ = self.lstm(input_, (self.hidn_st0, self.cell_st0))
