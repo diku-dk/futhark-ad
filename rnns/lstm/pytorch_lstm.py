@@ -2,21 +2,33 @@ import torch
 import json
 import sys
 import futhark_data
+import time
+from torch.utils.data import Dataset, DataLoader
 
 torch.set_default_tensor_type(torch.DoubleTensor)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print('Using device:', device)
 
-def lstm_bias_y(lstm, input_, hidn_st0, cell_st0, bias_y):
-  output, (hidn_st, cell_st) = lstm(input_, (hidn_st0, cell_st0))
-  return output + bias_y[None,:], (hidn_st, cell_st)
+class CustomData(Dataset):
+  def __init__(self, input_, target):
+    self.input_ = input_
+    self.target = target
+
+  def __len__(self):
+    return len(self.target)
+
+  def __getitem__(self,idx):
+    return input_[idx], target[idx]
+
 
 class RNNLSTM(torch.nn.Module):
   def __init__( self
               , n = 3
-              , length = 5
+              , length = 100
               , num_layers = 1
-              , hidden_size = 10
-              , num_features = 10
-              , output_size = 10):
+              , hidden_size = 20
+              , num_features = 50
+                , output_size = 20):
 
     super(RNNLSTM,self).__init__()
     self.n = n
@@ -25,9 +37,12 @@ class RNNLSTM(torch.nn.Module):
     self.hidden_size = hidden_size
     self.num_features = num_features
     self.output_size = output_size # generally same as hidden_size
-    self.hidn_st0 = torch.zeros(self.num_layers, self.n, self.hidden_size)
-    self.cell_st0 =torch.zeros(self.num_layers, self.n, self.hidden_size)
-    self.input0 = torch.randn(self.length, self.n, self.num_features)
+    self.hidn_st0 = torch.zeros(self.num_layers, self.n, self.hidden_size).to(device)
+    self.cell_st0 =torch.zeros(self.num_layers, self.n, self.hidden_size).to(device)
+    self.input_ = torch.randn(self.length, self.n, self.num_features).to(device)
+    self.target = torch.randn(self.length, self.n, self.num_features).to(device)
+    self.training_data = CustomData(self.input_, self.target)
+    self.dataloader = DataLoader(self.training_data)
 
     self.lstm = torch.nn.LSTM(input_size = num_features
                      , hidden_size = hidden_size
@@ -38,11 +53,12 @@ class RNNLSTM(torch.nn.Module):
                      , bidirectional = False
                      , proj_size = 0)
 
-    self.linear = torch.nn.Linear(self.num_features, self.output_size)
+    self.linear = torch.nn.Linear(self.output_size, self.num_features)
+    self.res = None
 
-  def dump(self, input_):
+  def dump(self):
     d = {}
-    d['input']    = self.input0
+    d['input']    = self.input_
     d['hidn_st0'] = self.hidn_st0
     d['cell_st0'] = self.cell_st0
     for name, p in self.lstm.named_parameters():
@@ -61,36 +77,43 @@ class RNNLSTM(torch.nn.Module):
     
     with open(filename + ".in",'wb') as f:
       for name, p in d.items():
-        print(name)
+        p_ = p.cpu()
         if self.n == 1:
           if name == 'input':
-              futhark_data.dump(p.detach().numpy()[:,0,:],f, True)
+              futhark_data.dump(p_.detach().numpy()[:,0,:],f, True)
           elif name == 'hidn_st0':
-              print(p.detach().numpy()[0,0,:])
-              futhark_data.dump(p.detach().numpy()[0,0,:],f, True)
+              futhark_data.dump(p_.detach().numpy()[0,0,:],f, True)
           elif name == 'cell_st0':
-              futhark_data.dump(p.detach().numpy()[0,0,:],f, True)
+              futhark_data.dump(p_.detach().numpy()[0,0,:],f, True)
           elif name == 'weight':
-              futhark_data.dump(p.detach().numpy().T,f, True)
+              futhark_data.dump(p_.detach().numpy().T,f, True)
           else:
-              futhark_data.dump(p.detach().numpy(),f, True)
+              futhark_data.dump(p_.detach().numpy(),f, True)
         else:
           if name == 'hidn_st0':
-              print(p.detach().numpy()[0,:,:].T)
-              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, True)
+              futhark_data.dump(p_.detach().numpy()[0,:,:].T,f, True)
           elif name == 'cell_st0':
-              futhark_data.dump(p.detach().numpy()[0,:,:].T,f, True)
+              futhark_data.dump(p_.detach().numpy()[0,:,:].T,f, True)
           elif name == 'weight':
-              futhark_data.dump(p.detach().numpy().T,f, True)
+              futhark_data.dump(p_.detach().numpy().T,f, True)
           else:
-              futhark_data.dump(p.detach().numpy(),f, True)
-    
+              futhark_data.dump(p_.detach().numpy(),f, True)
+
+    with open(filename + ".out",'w') as f:
+      futhark_data.dump(self.res.cpu().detach().numpy(),f, False)
+
   def forward(self, input_):
    outputs, _ = self.lstm(input_, (self.hidn_st0, self.cell_st0))
-   output = self.linear(torch.cat([t for t in outputs]))
+   output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.length, self.n, self.num_features))
+   self.res = output
    return output
 
 if __name__ == '__main__':
   rnnlstm = RNNLSTM()
-  rnnlstm.dump(rnnlstm.input0)
-  print(rnnlstm.forward(rnnlstm.input0))
+  start = time.time()
+  rnnlstm.to(device)
+  y_hat = rnnlstm.forward(rnnlstm.input_.to(device))
+  print("y_hat %s:" % (time.time() - start))
+  print(y_hat)
+  rnnlstm.dump()
+
