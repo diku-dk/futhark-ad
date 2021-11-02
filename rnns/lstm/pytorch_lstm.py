@@ -43,6 +43,11 @@ class RNNLSTM(torch.nn.Module):
     self.target = torch.randn(self.length, self.n, self.num_features).to(device)
     self.training_data = CustomData(self.input_, self.target)
     self.dataloader = DataLoader(self.training_data)
+    self.filename =  (f"lstm-{self.n}"
+                      f"-{self.num_features}"
+                      f"-{self.length}"
+                      f"-{self.num_layers}"
+                      f"-{self.hidden_size}")
 
     self.lstm = torch.nn.LSTM(input_size = num_features
                      , hidden_size = hidden_size
@@ -67,15 +72,10 @@ class RNNLSTM(torch.nn.Module):
     for name, p in self.linear.named_parameters():
       d[name] = p
 
-    filename = (f"lstm-{self.n}"
-                f"-{self.num_features}"
-                f"-{self.length}"
-                f"-{self.num_layers}"
-                f"-{self.hidden_size}")
-    with open(filename + ".json",'w') as f:
+    with open(self.filename + ".json",'w') as f:
        json.dump({name: p.tolist() for name, p in d.items()}, f)
     
-    with open(filename + ".in",'wb') as f:
+    with open(self.filename + ".in",'wb') as f:
       for name, p in d.items():
         p_ = p.cpu()
         if self.n == 1:
@@ -99,7 +99,8 @@ class RNNLSTM(torch.nn.Module):
           else:
               futhark_data.dump(p_.detach().numpy(),f, True)
 
-    with open(filename + ".out",'w') as f:
+  def dump_output(self):
+    with open(self.filename + ".out",'w') as f:
       futhark_data.dump(self.res.cpu().detach().numpy(),f, False)
 
   def forward(self, input_):
@@ -111,9 +112,10 @@ class RNNLSTM(torch.nn.Module):
 if __name__ == '__main__':
   rnnlstm = RNNLSTM()
   start = time.time()
+  rnnlstm.dump()
   rnnlstm.to(device)
   y_hat = rnnlstm.forward(rnnlstm.input_.to(device))
   print("y_hat %s:" % (time.time() - start))
   print(y_hat)
-  rnnlstm.dump()
+  rnnlstm.dump_output()
 
