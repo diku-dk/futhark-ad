@@ -19,12 +19,12 @@ class RNNLSTM(torch.nn.Module):
               , output_size = 10):
 
     super(RNNLSTM,self).__init__()
-    self.n = 3
-    self.length = 5
-    self.num_layers = 1
-    self.hidden_size = 10
-    self.num_features = 10
-    self.output_size = 10 # generally same as hidden_size
+    self.n = n
+    self.length = length
+    self.num_layers = num_layers
+    self.hidden_size = hidden_size
+    self.num_features = num_features
+    self.output_size = output_size # generally same as hidden_size
     self.hidn_st0 = torch.zeros(self.num_layers, self.n, self.hidden_size)
     self.cell_st0 =torch.zeros(self.num_layers, self.n, self.hidden_size)
     self.input0 = torch.randn(self.length, self.n, self.num_features)
