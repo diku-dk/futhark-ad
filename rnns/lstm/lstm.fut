@@ -58,7 +58,7 @@ let step [bs] [hx4] [h] [d]
   let ingate     = map (map sigmoid) ingate0
   let forgetgate = map (map sigmoid) forgetgate0
   let cellgate   = map (map tanh   ) cellgate0
-  let outgate    = map (map sigmoid) forgetgate0
+  let outgate    = map (map sigmoid) outgate0
 
 
 --  let gates = map2 (map2 (+)) mm_ih mm_hh
@@ -138,6 +138,7 @@ entry lstmPrd_ [bs][n][d][h][hx4]
 ----------------------------------------------------------------
 let lstmObj [bs][n][d][h][hx4]
             (input: [n][bs][d]real)
+            (target: [n][bs][d]real)
             (hidn_st0: [h][bs]real)
             (cell_st0: [h][bs]real)
             ( wght_ih: [hx4][d]real
@@ -158,7 +159,7 @@ let lstmObj [bs][n][d][h][hx4]
                  let j = r / d
                  let k = r - j*d
                  let ii= ind / d
-                 let y_el     = input[i,j,k]
+                 let y_el     = target[i,j,k]
                  let y_hat_el = input_hat[ii,k] + bias_y[k]
                  in  (y_el - y_hat_el) * (y_el - y_hat_el)
         )
@@ -178,6 +179,7 @@ let lstmObj [bs][n][d][h][hx4]
 -- Trying with: bs = 1024, d = 80, h = 256, n = 300
 let main [bs][n][d][h][hx4]
          (input: [n][bs][d]real)
+         (target: [n][bs][d]real)
          (hidn_st0: [h][bs]real)
          (cell_st0: [h][bs]real)
          --- to-diff params
@@ -196,5 +198,5 @@ let main [bs][n][d][h][hx4]
          , [h][d]real
          , [d]real
          ) =
-  vjp (lstmObj input hidn_st0 cell_st0)
+  vjp (lstmObj input target hidn_st0 cell_st0)
       (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
