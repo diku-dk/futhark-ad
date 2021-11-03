@@ -16,8 +16,12 @@ parameters = [ (1, 3, 100, 50, 20)
 
 def gen_data():
   for params in parameters:
+    (_,bs,n,d,_,) = params
+    input_ = torch.randn(n, bs, d).to(device)
+    target = torch.randn(n, bs, d).to(device)
     model = RNNLSTM(*params)
-    model.test()
+    model.test(input_, target)
+
 
 class RNNLSTM(torch.nn.Module):
   def __init__( self
@@ -36,8 +40,6 @@ class RNNLSTM(torch.nn.Module):
     self.output_size = h
     self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
     self.cell_st0 =torch.zeros(self.num_layers, self.bs, self.h).to(device)
-    self.input_ = torch.randn(self.n, self.bs, self.d).to(device)
-    self.target = torch.randn(self.n, self.bs, self.d).to(device)
     self.filename =  (f"data/lstm-{self.num_layers}"
                       f"-{self.bs}"
                       f"-{self.n}"
@@ -56,11 +58,11 @@ class RNNLSTM(torch.nn.Module):
     self.res = None
     self.grad_res = None
 
-  def dump(self):
+  def dump(self, input_):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
     d = {}
-    d['input']    = self.input_
+    d['input']    = input_
     d['hidn_st0'] = self.hidn_st0
     d['cell_st0'] = self.cell_st0
     for name, p in self.lstm.named_parameters():
@@ -91,36 +93,36 @@ class RNNLSTM(torch.nn.Module):
   def dump_output(self):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
-    with open(self.filename + ".out",'w') as f:
+    with open(self.filename + ".out",'wb') as f:
       futhark_data.dump(self.res.cpu().detach().numpy(),f, True)
       futhark_data.dump(self.res.cpu().detach().numpy(),f, True)
 
   def forward(self, input_):
-   outputs, st = self.lstm(self.input_, (self.hidn_st0, self.cell_st0))
+   outputs, st = self.lstm(input_, (self.hidn_st0, self.cell_st0))
    output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.n, self.bs, self.d))
    self.res = output
    return output, st
 
-  def grad(self, input_):
+  def vjp(self, input_, target):
     self.zero_grad()
     output = self(input_)
     loss_function = torch.nn.MSELoss()
-    loss = loss_function(input_, self.target)
+    loss = loss_function(input_, target)
     loss.backward()
-    self.grad_res = model.grad()
+    self.grad_res = loss.grad
 
-  def test(self, verbose=True):
+  def test(self, input_, target, verbose=True):
     self.to(device)
     forward_start = time.time()
-    self.forward(self.input_)
+    self.forward(input_)
     forward_end = time.time()
-    grad_start  = time.time()
-    self.grad(self.input_)
-    grad_end = time.time()
-    self.dump()
+    vjp_start  = time.time()
+    self.vjp(input_, target)
+    vjp_end = time.time()
+    self.dump(input_)
     self.dump_output()
     if verbose:
-      print (f"forward time: {forward_end-forward_start}, grad time: {grad_end-grad_start}")
+      print (f"forward time: {forward_end-forward_start}, grad time: {vjp_end-vjp_start}")
 
 
 if __name__ == '__main__':
