@@ -80,18 +80,20 @@ let step [bs] [hx4] [h] [d]
 
 let lstmPrd [bs][n][d][h][hx4]
             (input: [n][bs][d]real)
-            (wght_ih: [hx4][d]real)
-            (wght_hh: [hx4][h]real)
-            (wght_y:    [h][d]real)
-            (bias:       [hx4]real)
-            (bias_y:       [d]real)
             (hidn_st0: [h][bs]real)
             (cell_st0: [h][bs]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
+            (bias_ih:    [hx4]real)
+            (bias_hh:    [hx4]real)
+            (wght_y:    [h][d]real)
+            (bias_y:       [d]real)
           : ([][d]real, [][h]real, [h][bs]real) = --([n][bs][d]real, [][h]real, [h][bs]real) =
   -- rnn component
   let hidn_stack0  = replicate bs zero
                   |> replicate h
                   |> replicate n
+  let bias = map2 (+) bias_ih bias_hh
 
   -- hidn_stack0 :: [n][bs][h]
   let (hidn_stack, (_, cell_st)) =
@@ -114,6 +116,18 @@ let lstmPrd [bs][n][d][h][hx4]
   in  (y_hat, hidn_stack', cell_st)
   -- hidden_states[:, h-1] instead of hidn_stack in the return?
 
+entry lstmPrd_ [bs][n][d][h][hx4]
+            (input: [n][bs][d]real)
+            (hidn_st0: [h][bs]real)
+            (cell_st0: [h][bs]real)
+            (wght_ih: [hx4][d]real)
+            (wght_hh: [hx4][h]real)
+            (bias_ih:    [hx4]real)
+            (bias_hh:    [hx4]real)
+            (wght_y:    [h][d]real)
+            (bias_y:       [d]real)
+  = (lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y).0
+
 ----------------------------------------------------------------
 -- `bs`  is the batch size (for the moment `bs = 1`)          --
 -- `n`   is the length of a time series;                      --
@@ -128,13 +142,14 @@ let lstmObj [bs][n][d][h][hx4]
             (cell_st0: [h][bs]real)
             ( wght_ih: [hx4][d]real
             , wght_hh: [hx4][h]real
+            , bias_ih:    [hx4]real
+            , bias_hh:    [hx4]real
             , wght_y:    [h][d]real
-            , bias:       [hx4]real
             , bias_y:       [d]real
-            )
+	        )
           : real =
   let (input_hat, _, _) =
-        lstmPrd input wght_ih wght_hh wght_y bias bias_y hidn_st0 cell_st0
+        lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y
   let bsd = bs * d
   let tot_loss =
     tabulate (n*bs*d)
@@ -158,7 +173,7 @@ let lstmObj [bs][n][d][h][hx4]
 
 
 -- ==
--- compiled random input { [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [256][80]f32 [1024]f32 [80]f32 f32 } auto output
+-- compiled random input { [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [1024]f32 [256][80]f32 [80]f32 f32 }
 
 -- Trying with: bs = 1024, d = 80, h = 256, n = 300
 let main [bs][n][d][h][hx4]
@@ -168,16 +183,18 @@ let main [bs][n][d][h][hx4]
          --- to-diff params
          (wght_ih: [hx4][d]real)
          (wght_hh: [hx4][h]real)
+         (bias_ih:    [hx4]real)
+         (bias_hh:    [hx4]real)
          (wght_y:    [h][d]real)
-         (bias_h:    [hx4]real)
          (bias_y:       [d]real)
          --- adjoints ---
          (loss_adj : real) :
          ( [hx4][d]real
          , [hx4][h]real
-         , [h][d]real
          , [hx4]real
+         , [hx4]real
+         , [h][d]real
          , [d]real
          ) =
   vjp (lstmObj input hidn_st0 cell_st0)
-      (wght_ih, wght_hh, wght_y, bias_h, bias_y) loss_adj
+      (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
