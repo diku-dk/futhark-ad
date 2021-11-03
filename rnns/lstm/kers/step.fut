@@ -26,21 +26,21 @@ let mkGate [hx4][bs]
   let all = zip3 mm_ih mm_hh bias
   in  iota h |>
       map (\ i ->
-            let (row_ih, row_hh, b) = all[beg+i]
+            let (row_ih, row_hh, b) = #[unsafe] (all[beg+i])
             in  map2 (+) row_ih row_hh |> map (+b) 
           ) 
 
 let step [bs] [hx4] [h] [d]
          (inp_els: [bs][d]real)
-         (hidn_st: [h][bs]real, cell_st: [h][bs]real)
-         -- weights
-         ( wght_ih: [hx4][d]real
+         ( hidn_st: [h][bs]real
+         , cell_st: [h][bs]real
+         --- weights ---
+         , wght_ih: [hx4][d]real
          , wght_hh: [hx4][h]real
          , bias:    [hx4]real
          )
          : ([h][bs]real, [h][bs]real) =
   let mm_ih = map (matvec inp_els) wght_ih |> opaque
-
   let mm_hh = matmul wght_hh hidn_st |> opaque
 
   let ingate0     = mkGate h 0     mm_ih mm_hh bias
@@ -51,7 +51,7 @@ let step [bs] [hx4] [h] [d]
   let ingate     = map (map sigmoid) ingate0
   let forgetgate = map (map sigmoid) forgetgate0
   let cellgate   = map (map tanh   ) cellgate0
-  let outgate    = map (map sigmoid) forgetgate0
+  let outgate    = map (map sigmoid) outgate0
 
   let cell_st' =  map2 (map2 (*)) ingate cellgate
                |> map2 (map2 (+))
@@ -61,7 +61,10 @@ let step [bs] [hx4] [h] [d]
   in  (hidn_st', cell_st')
 
 -- ==
--- compiled random input { [1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [256][1024]f32 [256][1024]f32 } auto output
+-- compiled random input { [1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [256][1024]f32 [256][1024]f32 }  auto output
+
+-- compiled random input { [1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 } auto output
+
 
 let main [bs] [hx4] [h] [d]
          (inp_els: [bs][d]real)
@@ -74,7 +77,17 @@ let main [bs] [hx4] [h] [d]
          -- adjoints
          (hidn_st_adj: [h][bs]real)
          (cell_st_adj: [h][bs]real) =
-  vjp (step inp_els (hidn_st, cell_st))
-      (wght_ih, wght_hh, bias)
+  vjp (step inp_els)
+      (hidn_st, cell_st, wght_ih, wght_hh, bias)
       (hidn_st_adj, cell_st_adj)
+
+let main0 [bs] [hx4] [h] [d]
+         (inp_els: [bs][d]real)
+         (hidn_st: [h][bs]real)
+         (cell_st: [h][bs]real)
+         -- weights
+         (wght_ih: [hx4][d]real)
+         (wght_hh: [hx4][h]real)
+         (bias:    [hx4]real) =
+  step inp_els (hidn_st, cell_st, wght_ih, wght_hh, bias)
 
