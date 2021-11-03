@@ -160,7 +160,7 @@ let lstmObj [bs][n][d][h][hx4]
                  let k = r - j*d
                  let ii= ind / d
                  let y_el     = target[i,j,k]
-                 let y_hat_el = input_hat[ii,k] + bias_y[k]
+                 let y_hat_el = input_hat[ii,k]
                  in  (y_el - y_hat_el) * (y_el - y_hat_el)
         )
     |> sum
