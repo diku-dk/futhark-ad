@@ -20,6 +20,13 @@ parameters = [  (1, 2, 3, 4, 3)
 #             , (1, 3, 20, 300, 192)
              ]
 
+def read(filename):
+   with open(filename + ".json",'r') as f:
+    d = json.load(f)
+    for name, p in d.items():
+        d[name] = torch.tensor(p, dtype=torch.float32)
+    return d
+
 def gen_data():
   for params in parameters:
     (_,bs,n,d,_,) = params
@@ -27,16 +34,19 @@ def gen_data():
     target = torch.randn(n, bs, d).to(device)
     model = RNNLSTM(*params)
     model.test(input_, target)
+    d = read(model.filename)
+    naive = NaiveLSTM(d)
+    naive.test(input_, target)
 
 class NaiveLSTM(nn.Module):
-    def __init__(self, dims, hidden_dims,
-                 learn_h0=False, learn_c0=False,
-                 activation_h=nn.Tanh,
-                 activation_o=nn.Sigmoid,
-                 activation_f=nn.Sigmoid, 
-                 activation_i=nn.Sigmoid,
-                 activation_j=nn.Tanh, 
-                 rnn_mode=True, params):
+    def __init__(  self
+                 , params
+                 , activation_h=nn.Tanh
+                 , activation_o=nn.Sigmoid
+                 , activation_f=nn.Sigmoid
+                 , activation_i=nn.Sigmoid
+                 , activation_j=nn.Tanh 
+                 ):
         super().__init__()
 
           
@@ -48,14 +58,14 @@ class NaiveLSTM(nn.Module):
         self.activation_j = activation_j()
 
         # parameters of the (recurrent) hidden layer
-        self.W_i, self.W_f, self.W_g, self.W_o =
-          torch.chunk(params['weight_ih_l0'], 4)
+        self.W_i, self.W_f, self.W_j, self.W_o = \
+                     torch.chunk(params['weight_ih_l0'], 4)
 
-        self.b_i, self.b_f, self.b_g, self.b_o = 
-          torch.chunk(params['bias_ih_l0'], 4)
+        self.b_i, self.b_f, self.b_j, self.b_o = \
+                   torch.chunk(params['bias_ih_l0'], 4)
 
-        self.U_i, self.U_f, self.U_g, self.U_o =
-          torch.chunk(params['weight_hh_l0'], 4)
+        self.U_i, self.U_f, self.U_j, self.U_o = \
+             torch.chunk(params['weight_hh_l0'], 4)
         
         # initial hidden state
         self.h_0 = params['hidn_st0']
@@ -64,21 +74,25 @@ class NaiveLSTM(nn.Module):
         # output layer (fully connected)
         self.W_y = params['weight']
         self.b_y = params['bias']
+
+        self.input_ = params['input']
+        self.target = params['target']
+        self.grads = None
                 
     def step(self, x_t, h, c):
         #  forward pass for a single time step
         # hint: a more clever implementation could combine all these and select the different parts later
         j = self.activation_j(
-            torch.matmul(x_t, self.W_j) + torch.matmul(h, self.U_j) + self.b_j
+            torch.matmul(self.W_j, x_t) + torch.matmul(self.U_j,h) + self.b_j
         )
         i = self.activation_i(
-            torch.matmul(x_t, self.W_i) + torch.matmul(h, self.U_i) + self.b_i
+            torch.matmul(self.W_i, x_t) + torch.matmul(self.U_i,h) + self.b_i
         )
         f = self.activation_f(
-            torch.matmul(x_t, self.W_f) + torch.matmul(h, self.U_f) + self.b_f
+            torch.matmul(self.W_f, x_t) + torch.matmul(self.U_f,h) + self.b_f
         )        
         o = self.activation_o(
-            torch.matmul(x_t, self.W_o) + torch.matmul(h, self.U_o) + self.b_o
+            torch.matmul(self.W_o, x_t) + torch.matmul(self.U_o,h) + self.b_o
         )
         
         
@@ -144,6 +158,50 @@ class NaiveLSTM(nn.Module):
         x_0, h, c = self.many_to_one(x, h, c)
         return self.auto_regression(x_0, h, c, steps)
 
+    def vjp(self, input_, target):
+        x = self.input_ if self.input_ else input_
+        y = self.target if self.target else target
+        x, y = x.to(device), y.to(device)
+        h = c = None
+        # reset gradients
+        #optimizer.zero_grad()
+        
+        # get predictions (forward pass)
+        y_hat, h, c = self(x, h, c)
+                 
+        # calculate mean squared error
+        loss = torch.mean((y_hat - y)**2)        
+        # backprop
+        loss.backward()
+        print("loss")
+        print(loss)
+        #self.grads = dict(chain(self.lstm.named_parameters(), self.linear.named_parameters()))
+        #print("grads")
+        #for name, p in self.grads.items():
+        #  print(name)
+        #  print(p.size())
+        #  print(p)
+    
+
+    def test(self, input_, target, verbose=True):
+        input_ = input_ if self.input_ == None else self.input_
+        target = target if self.target == None else self.target
+        #self.to(device)
+        forward_start = time.time()
+        self.forward(input_, None, None)
+        forward_end = time.time()
+        vjp_start  = time.time()
+        self.vjp(input_, target)
+        vjp_end = time.time()
+        #self.dump(input_, target)
+        #self.dump_output()
+        if verbose:
+          print(self.filename)
+          print(f"forward time: {forward_end-forward_start}")
+          print(f"grad time   : {vjp_end-vjp_start}")
+          print(f"total time  : {vjp_end - forward_start}")
+          print()
+
 class RNNLSTM(nn.Module):
   def __init__( self
               , num_layers
@@ -182,7 +240,7 @@ class RNNLSTM(nn.Module):
     self.input_ = None
     self.target = None
 
-    if os.path.isfile(filename):
+    if os.path.isfile(self.filename):
       self.input_, self.target = read()
 
   def dump(self, input_, target):
@@ -235,6 +293,7 @@ class RNNLSTM(nn.Module):
     return d['input'], d['target']
 
   def forward(self, input_):
+   input_ = self.input_ if self.input_ else input_
    outputs, st = self.lstm(input_, (self.hidn_st0, self.cell_st0))
    print("st")
    print(st)
@@ -245,6 +304,8 @@ class RNNLSTM(nn.Module):
    return output
 
   def vjp(self, input_, target):
+    input_ = self.input_ if self.input_ else input_
+    target = self.target if self.target else target
     self.zero_grad()
     output = self(input_)
     print("output")
@@ -264,6 +325,8 @@ class RNNLSTM(nn.Module):
       print(p)
 
   def test(self, input_, target, verbose=True):
+    input_ = self.input_ if self.input_ else input_
+    target = self.target if self.target else target
     self.to(device)
     forward_start = time.time()
     self.forward(input_)
