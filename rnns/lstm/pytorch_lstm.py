@@ -29,10 +29,13 @@ def gen_data():
     model.test(input_, target)
 
 class NaiveLSTM(nn.Module):
-    def __init__(self, dims, hidden_dims, learn_h0=False, learn_c0=False,
+    def __init__(self, dims, hidden_dims,
+                 learn_h0=False, learn_c0=False,
                  activation_h=nn.Tanh,
-                 activation_o=nn.Sigmoid, activation_f=nn.Tanh, 
-                 activation_i=nn.Sigmoid, activation_j=nn.Sigmoid, 
+                 activation_o=nn.Sigmoid,
+                 activation_f=nn.Sigmoid, 
+                 activation_i=nn.Sigmoid,
+                 activation_j=nn.Tanh, 
                  rnn_mode=True, params):
         super().__init__()
 
@@ -44,64 +47,23 @@ class NaiveLSTM(nn.Module):
         self.activation_i = activation_i()
         self.activation_j = activation_j()
 
-
-    #d = json.load(self.filename + ".json",'w')
-    #for name, p in d.items():
-    #    d[name] = torch.tensor(p, dtype=torch.float32)
-    #with torch.no_grad():
-    #  for name, p in chain(self.lstm.named_parameters(), self.linear.named_parameters()):
-    #    p.copy_(d[name])
-    #return d['input'], d['target']
-        
         # parameters of the (recurrent) hidden layer
-        self.wght_ih = params['weight_ih_l0']
-        self.wght_hh = params['weight_hh_l0']
+        self.W_i, self.W_f, self.W_g, self.W_o =
+          torch.chunk(params['weight_ih_l0'], 4)
 
-        self.W_o = nn.Parameter(params['weight_ih_l0'])
-        self.b_o = nn.Parameter(
-        self.W_f = nn.Parameter() * .1)
-        self.b_f = nn.Parameter(
-        self.W_i = nn.Parameter()
-        self.b_i = nn.Parameter(
-        self.W_j = nn.Parameter(s) * .1)
-        self.b_j = nn.Parameter(
-        
-        
-        self.U_o = nn.Parameter(
-            torch.randn(hidden_dims, hidden_dims) * .1
-        )
-        self.U_f = nn.Parameter(
-            torch.randn(hidden_dims, hidden_dims) * .1
-        )
-        self.U_i = nn.Parameter(
-            torch.randn(hidden_dims, hidden_dims) * .1
-        )
-        self.U_j = nn.Parameter(
-            torch.randn(hidden_dims, hidden_dims) * .1
-        )
-        
-        if not rnn_mode:
-            self.U_o.zero_(); self.U_f.zero_(); self.U_i.zero_(); self.U_j.zero_()
-            self.U_o.requires_grad = False
-            self.U_f.requires_grad = False
-            self.U_i.requires_grad = False
-            self.U_j.requires_grad = False
+        self.b_i, self.b_f, self.b_g, self.b_o = 
+          torch.chunk(params['bias_ih_l0'], 4)
 
+        self.U_i, self.U_f, self.U_g, self.U_o =
+          torch.chunk(params['weight_hh_l0'], 4)
+        
         # initial hidden state
-        self.h_0 = nn.Parameter(
-            torch.zeros(1, hidden_dims),
-            requires_grad=learn_h0 # only train this if enabled
-        )        
-        
-        # initial cell state
-        self.c_0 = nn.Parameter(
-            torch.zeros(1, hidden_dims),
-            requires_grad=learn_c0 # only train this if enabled
-        )
+        self.h_0 = params['hidn_st0']
+        self.c_0 = params['cell_st0']
         
         # output layer (fully connected)
-        self.W_y = nn.Parameter(torch.randn(hidden_dims, dims) * .1)
-        self.b_y = nn.Parameter(torch.zeros(1, dims))
+        self.W_y = params['weight']
+        self.b_y = params['bias']
                 
     def step(self, x_t, h, c):
         #  forward pass for a single time step
@@ -197,8 +159,6 @@ class RNNLSTM(nn.Module):
     self.h = h
     self.d = d
     self.output_size = h
-    self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
-    self.cell_st0 =torch.zeros(self.num_layers, self.bs, self.h).to(device)
     self.filename =  (f"data/lstm-{self.num_layers}"
                       f"-{self.bs}"
                       f"-{self.n}"
@@ -213,9 +173,17 @@ class RNNLSTM(nn.Module):
                      , dropout = 0
                      , bidirectional = False
                      , proj_size = 0)
+
+    self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
+    self.cell_st0 =torch.zeros(self.num_layers, self.bs, self.h).to(device)
     self.linear = nn.Linear(self.output_size, self.d)
     self.res = None
     self.grads = None
+    self.input_ = None
+    self.target = None
+
+    if os.path.isfile(filename):
+      self.input_, self.target = read()
 
   def dump(self, input_, target):
     if not os.path.exists(os.path.dirname(self.filename)):
@@ -288,8 +256,7 @@ class RNNLSTM(nn.Module):
     loss.backward(gradient=torch.tensor(1.0))
     print("loss")
     print(loss)
-    self.grads = {name: p for name, p
-                   in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
+    self.grads = dict(chain(self.lstm.named_parameters(), self.linear.named_parameters()))
     print("grads")
     for name, p in self.grads.items():
       print(name)
