@@ -165,7 +165,6 @@ entry rev_J [bs][n][d][h][hx4]
   vjp (lstmObj input target hidn_st0 cell_st0)
       (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
 
-
 -- ==
 -- entry: rev_J
 -- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.J
