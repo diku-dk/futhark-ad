@@ -16,9 +16,9 @@ print('Using device:', device)
 
 # bs, n, d, h
 parameters = [ (2, 3, 4, 3) 
-             , (3, 5, 10, 5)
-             , (3, 100, 50, 20)
-             , (3, 20, 300, 192)
+#             , (3, 5, 10, 5)
+#             , (3, 100, 50, 20)
+#             , (3, 20, 300, 192)
              ]
 
 def equal(m1, m2):
@@ -57,7 +57,15 @@ def gen_data():
     model = RNNLSTM(*params, filename)
     model.run(gen_data=True)
 
-def test(mkdata=False):
+def print_values(name, model):
+  print(f"Values for {name}:")
+  print("Output:")
+  print(model.output)
+  print(f"Loss: {model.loss}")
+  print("Grads:")
+  print(model.grads)
+
+def test(mkdata=False, verbose=False):
   if mkdata: gen_data()
   for params in parameters:
     (bs,n,d,h) = params
@@ -67,6 +75,9 @@ def test(mkdata=False):
     model.run(tensors['input'].to(device), tensors['target'].to(device))
     naive = NaiveLSTM(tensors)
     naive.run(filename=filename)
+    if verbose:
+       print_values("torch.nn.LSTM", model)
+       print_values("naive", naive)
     if equal(model, naive):
       print(f"test data {filename} validates!")
     else:
