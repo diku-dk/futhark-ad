@@ -10,15 +10,38 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from itertools import chain
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
-# layers, bs, n, d, h
-parameters = [  (1, 2, 3, 4, 3) 
-#             , (1, 3, 5, 10, 5)
-#             , (1, 3, 100, 50, 20)
-#             , (1, 3, 20, 300, 192)
+# bs, n, d, h
+parameters = [ (2, 3, 4, 3) 
+             , (3, 5, 10, 5)
+             , (3, 100, 50, 20)
+             , (3, 20, 300, 192)
              ]
+
+def equal(m1, m2):
+   grads_equal = True
+   for n in m1.grads.keys():
+     grads_equal = grads_equal and torch.allclose(m1.grads[n], m2.grads[n], 0.0001, 0.0001)
+   return torch.allclose(m1.output, m2.output, 0.0001, 0.0001) \
+     and torch.allclose(m1.loss, m2.loss, 0.0001, 0.0001) \
+     and grads_equal
+
+def gen_filename(bs, n, d, h, directory="data", ext=None):
+  path = f"{directory}/lstm-bs{bs}-n{n}-d{d}-h{h}"
+
+  return path if ext is None else f"{path}.{ext}"
+
+def report_time(model, f_start, f_end, vjp_start, vjp_end, filename=None):
+  if filename:
+    print(f"{model}   {filename}:")
+  else:
+    print(f"{model}:")
+  print(f"forward time: {f_end-f_start}")
+  print(f"grad time   : {vjp_end-vjp_start}")
+  print(f"total time  : {vjp_end-f_start}")
 
 def read(filename):
    with open(filename + ".json",'r') as f:
@@ -29,19 +52,30 @@ def read(filename):
 
 def gen_data():
   for params in parameters:
-    (_,bs,n,d,_,) = params
-    input_ = torch.randn(bs, n, d).to(device)
-    target = torch.randn(bs, n, d).to(device)
-    model = RNNLSTM(*params)
-    model.test(input_, target)
-    d = read(model.filename)
-    naive = NaiveLSTM(d)
-    naive.to(device)
-    naive.test(model.filename, input_, target)
+    (bs,n,d,h) = params
+    filename = gen_filename(bs, n, d, h, ext=None)
+    model = RNNLSTM(*params, filename)
+    model.run(gen_data=True)
+
+def test(mkdata=False):
+  if mkdata: gen_data()
+  for params in parameters:
+    (bs,n,d,h) = params
+    filename = gen_filename(bs, n, d, h, ext=None)
+    tensors = read(filename)
+    model = RNNLSTM(*params, filename, tensors)
+    model.run(tensors['input'].to(device), tensors['target'].to(device))
+    naive = NaiveLSTM(tensors)
+    naive.run(filename=filename)
+    if equal(model, naive):
+      print(f"test data {filename} validates!")
+    else:
+      print(f"Error: test data {filename} doesn't validate!")
+    print()
 
 class NaiveLSTM(nn.Module):
     def __init__(  self
-                 , params
+                 , tensors
                  , activation_h=nn.Tanh
                  , activation_o=nn.Sigmoid
                  , activation_f=nn.Sigmoid
@@ -58,31 +92,32 @@ class NaiveLSTM(nn.Module):
         self.activation_i = activation_i()
         self.activation_j = activation_j()
 
+        self.input_ = tensors['input']
+        self.target = tensors['target']
+
         # parameters of the (recurrent) hidden layer
         self.W_i, self.W_f, self.W_j, self.W_o = \
-             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(params['weight_ih_l0'], 4))
+             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(tensors['weight_ih_l0'], 4))
 
         self.b_ii, self.b_if, self.b_ij, self.b_io = \
-             tuple(nn.Parameter(t) for t in torch.chunk(params['bias_ih_l0'], 4))
+             tuple(nn.Parameter(t) for t in torch.chunk(tensors['bias_ih_l0'], 4))
 
         self.b_hi, self.b_hf, self.b_hj, self.b_ho = \
-             tuple(nn.Parameter(t) for t in torch.chunk(params['bias_hh_l0'], 4))
+             tuple(nn.Parameter(t) for t in torch.chunk(tensors['bias_hh_l0'], 4))
 
         self.U_i, self.U_f, self.U_j, self.U_o = \
-             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(params['weight_hh_l0'], 4))
-             #torch.chunk(params['weight_hh_l0'], 4)
+             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(tensors['weight_hh_l0'], 4))
         
         # initial hidden state
-        self.h_0 = nn.Parameter(params['hidn_st0'][0])
-        self.c_0 = nn.Parameter(params['cell_st0'][0])
+        self.h_0 = nn.Parameter(tensors['hidn_st0'][0])
+        self.c_0 = nn.Parameter(tensors['cell_st0'][0])
         
         # output layer (fully connected)
-        self.W_y = nn.Parameter(torch.transpose(params['weight'], 0, 1))
-        self.b_y = nn.Parameter(params['bias'])
+        self.W_y = nn.Parameter(torch.transpose(tensors['weight'], 0, 1))
+        self.b_y = nn.Parameter(tensors['bias'])
 
-        self.input_ = nn.Parameter(params['input'])
-        self.target = nn.Parameter(params['target'])
-        self.grads = None
+        self.input_ = nn.Parameter(tensors['input'])
+        self.target = nn.Parameter(tensors['target'])
                 
     def step(self, x_t, h, c):
         #  forward pass for a single time step
@@ -125,17 +160,12 @@ class NaiveLSTM(nn.Module):
         return y_hat, hidden_states[:, -1], c
     
     def forward(self, x, h, c):
-        # x: b, t, d
-
-         # 1 x h
-         # turns into
-         # bs x h
-        batch_size = x.shape[0] 
         if h is None:
-            h = self.h_0 #.repeat_interleave(batch_size, 0)
+            h = self.h_0
         if c is None:
-            c = self.c_0 #.repeat_interleave(batch_size, 0)
+            c = self.c_0
         y_hat, h, c = self.iterate_series(x, h, c)
+        self.output = y_hat
         return y_hat, h, c
     
     def vjp(self, input_, target):
@@ -151,84 +181,75 @@ class NaiveLSTM(nn.Module):
         loss = torch.mean((y_hat - y)**2)        
         # backprop
         loss.backward()
+        self.loss = loss
 
         d = dict(self.named_parameters())
-        self.grads = {  'weight_ih': torch.stack([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
-                      , 'weight_hh': torch.stack([torch.transpose(g, 0, 1) for g in [d['U_i'], d['U_f'], d['U_j'], d['U_o']]])
-                      , 'bias_ih'  : torch.stack([d['b_ii'], d['b_if'], d['b_ij'], d['b_io']])
-                      , 'bias_hh'  : torch.stack([d['b_hi'], d['b_hf'], d['b_hj'], d['b_ho']])
-                      , 'weight'   : d['W_y']
-                      , 'bias'     : d['b_y']
+        self.grads = {  'weight_ih_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
+                      , 'weight_hh_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['U_i'], d['U_f'], d['U_j'], d['U_o']]])
+                      , 'bias_ih_l0'  : torch.concat([d['b_ii'], d['b_if'], d['b_ij'], d['b_io']])
+                      , 'bias_hh_l0'  : torch.concat([d['b_hi'], d['b_hf'], d['b_hj'], d['b_ho']])
+                      , 'weight'      : torch.transpose(d['W_y'], 0, 1)
+                      , 'bias'        : d['b_y']
                      }
 
-    def test(self, filename, input_, target, verbose=True):
-        input_ = input_ if self.input_ == None else self.input_
-        target = target if self.target == None else self.target
-        #self.to(device)
-        forward_start = time.time()
+    def run(self, filename=None, input_=None, target=None):
+        input_ = self.input_ if input_ is None else input_
+        target = self.target if target is None else target
+        self.to(device)
+        f_start = time.time()
         self.forward(input_, None, None)
-        forward_end = time.time()
+        f_end = time.time()
         vjp_start  = time.time()
         self.vjp(input_, target)
         vjp_end = time.time()
         #self.dump(input_, target)
         #self.dump_output()
-        if verbose:
-          print(filename)
-          print(f"forward time: {forward_end-forward_start}")
-          print(f"grad time   : {vjp_end-vjp_start}")
-          print(f"total time  : {vjp_end - forward_start}")
-          print()
+        report_time("naive        ", f_start, f_end, vjp_start, vjp_end, filename)
 
 class RNNLSTM(nn.Module):
   def __init__( self
-              , num_layers
               , bs
               , n
               , d
-              , h):
+              , h
+              , filename
+              , tensors=None):
 
     super(RNNLSTM,self).__init__()
+    self.num_layers = 1
     self.bs = bs
     self.n = n
-    self.num_layers = num_layers
     self.h = h
     self.d = d
-    self.output_size = h
-    self.filename =  (f"data/lstm-{self.num_layers}"
-                      f"-{self.bs}"
-                      f"-{self.n}"
-                      f"-{self.d}"
-                      f"-{self.h}"
-                      f"-{self.output_size}")
-    self.lstm = nn.LSTM(input_size = d
-                     , hidden_size = h
-                     , num_layers = num_layers
+    self.filename = filename 
+    self.lstm = nn.LSTM(input_size = self.d
+                     , hidden_size = self.h
+                     , num_layers = self.num_layers
                      , bias = True
                      , batch_first = True
                      , dropout = 0
                      , bidirectional = False
                      , proj_size = 0)
-    #(1, 2, 3)
-    self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
-    self.cell_st0 =torch.zeros(self.num_layers, self.bs, self.h).to(device)
-    self.linear = nn.Linear(self.output_size, self.d)
-    self.res = None
-    self.grads = None
-    self.input_ = None
-    self.target = None
+    self.linear = nn.Linear(self.h, self.d)
 
-    if os.path.isfile(self.filename):
-      self.input_, self.target = read()
-
+    if tensors is None:
+      self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
+      self.cell_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
+    else:
+      self.hidn_st0 = tensors['hidn_st0'].to(device)
+      self.cell_st0 = tensors['cell_st0'].to(device)
+      with torch.no_grad():
+        for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters()):
+          p.copy_(tensors[n].clone().detach())
+    
   def dump(self, input_, target):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
-    d = {}
-    d['input']    = input_
-    d['target']    = target
-    d['hidn_st0'] = self.hidn_st0
-    d['cell_st0'] = self.cell_st0
+    d = { 'input' :   input_
+        , 'target':   target
+        , 'hidn_st0': self.hidn_st0
+        , 'cell_st0': self.cell_st0
+        }
     for name, p in chain(self.lstm.named_parameters(), self.linear.named_parameters()):
       d[name] = p
 
@@ -257,7 +278,7 @@ class RNNLSTM(nn.Module):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
     with open(self.filename + ".out",'w') as f:
-      futhark_data.dump(self.res.cpu().detach().numpy(),f, False)
+      futhark_data.dump(self.output.cpu().detach().numpy(),f, False)
       for g in self.grads.values():
         futhark_data.dump(g.cpu().detach().numpy(),f,False)
 
@@ -271,41 +292,36 @@ class RNNLSTM(nn.Module):
     return d['input'], d['target']
 
   def forward(self, input_):
-   input_ = self.input_ if self.input_ else input_
    outputs, st = self.lstm(input_, (self.hidn_st0, self.cell_st0))
    output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.bs, self.n, self.d))
-   self.res = output
+   self.output = output
    return output
 
   def vjp(self, input_, target):
-    input_ = self.input_ if self.input_ else input_
-    target = self.target if self.target else target
     self.zero_grad()
     output = self(input_)
     loss_function = nn.MSELoss(reduction='mean')
     loss = loss_function(output, target)
     loss.backward(gradient=torch.tensor(1.0))
+    self.loss = loss
     self.grads = dict(chain(self.lstm.named_parameters(), self.linear.named_parameters()))
-    print(self.grads)
 
-  def test(self, input_, target, verbose=True):
-    input_ = self.input_ if self.input_ else input_
-    target = self.target if self.target else target
+  def run(self, input_=None, target=None, gen_data=False):
+    if not gen_data and (input_ is None or target is None):
+       print("Error: must input and target data!")
+       exit(1)
+    if gen_data:
+      input_ = torch.randn(self.bs, self.n, self.d).to(device)
+      target = torch.randn(self.bs, self.n, self.d).to(device)
     self.to(device)
-    forward_start = time.time()
+    f_start = time.time()
     self.forward(input_)
-    forward_end = time.time()
+    f_end = time.time()
     vjp_start  = time.time()
     self.vjp(input_, target)
     vjp_end = time.time()
-    self.dump(input_, target)
-    self.dump_output()
-    if verbose:
-      print(self.filename)
-      print(f"forward time: {forward_end-forward_start}")
-      print(f"grad time   : {vjp_end-vjp_start}")
-      print(f"total time  : {vjp_end - forward_start}")
-      print()
-
-if __name__ == '__main__':
-  gen_data()
+    if gen_data:
+      self.dump(input_, target)
+      self.dump_output()
+    if not gen_data:
+      report_time("torch.nn.LSTM", f_start, f_end, vjp_start, vjp_end, self.filename)
