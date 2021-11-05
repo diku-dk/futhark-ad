@@ -283,21 +283,21 @@ class RNNLSTM(nn.Module):
     with open(self.filename + ".json",'w') as f:
        json.dump({name: p.tolist() for name, p in d.items()}, f)
 
-    with open(self.filename + ".in",'w') as f:
+    with open(self.filename + ".in",'wb') as f:
       for xs in d_futhark.values():
-        futhark_data.dump(xs, f, False)
+        futhark_data.dump(xs, f, True)
 
   def dump_output(self):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
-    with open(self.filename + ".out",'w') as f:
-      futhark_data.dump(self.output.cpu().detach().numpy().reshape(self.bs*self.n, -1),f, False)
-    with open(self.filename + ".J",'w') as f:
+    with open(self.filename + ".out",'wb') as f:
+      futhark_data.dump(self.output.cpu().detach().numpy().reshape(self.bs*self.n, -1),f, True)
+    with open(self.filename + ".J",'wb') as f:
       for n, g in self.grads.items():
         if n == 'weight':
-          futhark_data.dump(g.cpu().detach().numpy().T,f,False)
+          futhark_data.dump(g.cpu().detach().numpy().T,f,True)
         else:
-          futhark_data.dump(g.cpu().detach().numpy(),f,False)
+          futhark_data.dump(g.cpu().detach().numpy(),f,True)
 
   def read(self):
     d = json.load(self.filename + ".json",'w')
