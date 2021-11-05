@@ -116,8 +116,9 @@ class NaiveLSTM(nn.Module):
         self.W_y = nn.Parameter(torch.transpose(tensors['weight'], 0, 1))
         self.b_y = nn.Parameter(tensors['bias'])
 
-        self.input_ = nn.Parameter(tensors['input'])
-        self.target = nn.Parameter(tensors['target'])
+
+        self.input_ = nn.Parameter(torch.transpose(tensors['input'], 0, 1))
+        self.target = nn.Parameter(torch.transpose(tensors['target'], 0, 1))
                 
     def step(self, x_t, h, c):
         #  forward pass for a single time step
@@ -156,6 +157,8 @@ class NaiveLSTM(nn.Module):
         # fully connected output
         y_hat = hidden_states.reshape(batch_size * n_steps, -1) # flatten steps and batch size (bs * )
         y_hat = torch.matmul(y_hat, self.W_y) + self.b_y
+        print("y_hat")
+        print(y_hat)
         y_hat = y_hat.reshape(batch_size, n_steps, -1) # regains structure
         return y_hat, hidden_states[:, -1], c
     
@@ -165,7 +168,7 @@ class NaiveLSTM(nn.Module):
         if c is None:
             c = self.c_0
         y_hat, h, c = self.iterate_series(x, h, c)
-        self.output = y_hat
+        self.output = torch.transpose(y_hat, 0, 1)
         return y_hat, h, c
     
     def vjp(self, input_, target):
@@ -226,7 +229,7 @@ class RNNLSTM(nn.Module):
                      , hidden_size = self.h
                      , num_layers = self.num_layers
                      , bias = True
-                     , batch_first = True
+                     , batch_first = False
                      , dropout = 0
                      , bidirectional = False
                      , proj_size = 0)
@@ -293,7 +296,7 @@ class RNNLSTM(nn.Module):
 
   def forward(self, input_):
    outputs, st = self.lstm(input_, (self.hidn_st0, self.cell_st0))
-   output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.bs, self.n, self.d))
+   output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.n, self.bs, self.d))
    self.output = output
    return output
 
@@ -311,8 +314,8 @@ class RNNLSTM(nn.Module):
        print("Error: must input and target data!")
        exit(1)
     if gen_data:
-      input_ = torch.randn(self.bs, self.n, self.d).to(device)
-      target = torch.randn(self.bs, self.n, self.d).to(device)
+      input_ = torch.randn(self.n, self.bs, self.d).to(device)
+      target = torch.randn(self.n, self.bs, self.d).to(device)
     self.to(device)
     f_start = time.time()
     self.forward(input_)
