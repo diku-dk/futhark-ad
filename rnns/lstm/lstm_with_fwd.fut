@@ -102,6 +102,20 @@ let lstmPrd [bs][n][d][h][hx4]
 
   in  (y_hat, hidn_stack', cell_st)
 
+entry lstmPrd_ [bs][n][d][h][hx4]
+	       (input: [n][bs][d]real)
+	       (_target: [n][bs][d]real)
+	       (hidn_st0: [h][bs]real)
+	       (cell_st0: [h][bs]real)
+	       (wght_ih: [hx4][d]real)
+	       (wght_hh: [hx4][h]real)
+	       (bias_ih:    [hx4]real)
+	       (bias_hh:    [hx4]real)
+	       (wght_y:    [h][d]real)
+	       (bias_y:       [d]real)
+	       (_loss_adj: real)  =
+  (lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y).0
+
 ----------------------------------------------------------------
 -- `bs`  is the batch size (for the moment `bs = 1`)          --
 -- `n`   is the length of a time series;                      --
@@ -165,9 +179,56 @@ entry rev_J [bs][n][d][h][hx4]
   vjp (lstmObj input target hidn_st0 cell_st0)
       (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
 
+let onehot x n p : [n]real =
+  tabulate n (\i -> x * realbool (i==p))
+
+let onehot_2d x n m p : [n][m]real =
+  tabulate_2d n m (\i j -> x * realbool ((i,j)==p))
+
+let zeros n : [n]real = replicate n 0
+
+let zeros_2d n m : [n][m]real = replicate n (replicate m 0)
+
+entry fwd_J [bs][n][d][h][hx4]
+	 (input: [n][bs][d]real)
+	 (target: [n][bs][d]real)
+	 (hidn_st0: [h][bs]real)
+	 (cell_st0: [h][bs]real)
+	 --- to-diff params
+	 (wght_ih: [hx4][d]real)
+	 (wght_hh: [hx4][h]real)
+	 (bias_ih:    [hx4]real)
+	 (bias_hh:    [hx4]real)
+	 (wght_y:    [h][d]real)
+	 (bias_y:       [d]real)
+	 --- adjoints ---
+	 (loss_adj : real) :
+	 ( [hx4][d]real
+	 , [hx4][h]real
+	 , [hx4]real
+	 , [hx4]real
+	 , [h][d]real
+	 , [d]real
+	 ) =
+	 let grad = jvp (lstmObj input target hidn_st0 cell_st0)
+			(wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y)
+	 let zeros_tup = (zeros_2d hx4 d, zeros_2d hx4 h, zeros hx4, zeros hx4 ,zeros_2d h d, zeros d)
+	 in
+	 (tabulate_2d hx4 d (\i j -> grad (zeros_tup with 0 = onehot_2d loss_adj hx4 d (i, j)))
+	 ,tabulate_2d hx4 h (\i j -> grad (zeros_tup with 1 = onehot_2d loss_adj hx4 h (i,j)))
+	 ,tabulate hx4      (\i ->   grad (zeros_tup with 2 = onehot loss_adj hx4 i))
+	 ,tabulate hx4      (\i ->   grad (zeros_tup with 3 = onehot loss_adj hx4 i))
+	 ,tabulate_2d h d   (\i j -> grad (zeros_tup with 4 = onehot_2d loss_adj h d (i,j)))
+	 ,tabulate d        (\i ->   grad (zeros_tup with 5 = onehot loss_adj d i)))
 
 -- ==
--- entry: rev_J
+-- entry: lstmPrd_
+-- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.out
+-- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.out
+-- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.out
+
+-- ==
+-- entry: fwd_J rev_J
 -- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.J
 -- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.J
 -- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.J
