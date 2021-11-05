@@ -14,7 +14,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
 # layers, bs, n, d, h
-parameters = [  (1, 2, 3, 4, 3)
+parameters = [  (1, 2, 3, 4, 3) 
 #             , (1, 3, 5, 10, 5)
 #             , (1, 3, 100, 50, 20)
 #             , (1, 3, 20, 300, 192)
@@ -30,13 +30,14 @@ def read(filename):
 def gen_data():
   for params in parameters:
     (_,bs,n,d,_,) = params
-    input_ = torch.randn(n, bs, d).to(device)
-    target = torch.randn(n, bs, d).to(device)
+    input_ = torch.randn(bs, n, d).to(device)
+    target = torch.randn(bs, n, d).to(device)
     model = RNNLSTM(*params)
     model.test(input_, target)
     d = read(model.filename)
     naive = NaiveLSTM(d)
-    naive.test(input_, target)
+    naive.to(device)
+    naive.test(model.filename, input_, target)
 
 class NaiveLSTM(nn.Module):
     def __init__(  self
@@ -59,42 +60,44 @@ class NaiveLSTM(nn.Module):
 
         # parameters of the (recurrent) hidden layer
         self.W_i, self.W_f, self.W_j, self.W_o = \
-                     torch.chunk(params['weight_ih_l0'], 4)
+             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(params['weight_ih_l0'], 4))
 
-        self.b_i, self.b_f, self.b_j, self.b_o = \
-                   torch.chunk(params['bias_ih_l0'], 4)
+        self.b_ii, self.b_if, self.b_ij, self.b_io = \
+             tuple(nn.Parameter(t) for t in torch.chunk(params['bias_ih_l0'], 4))
+
+        self.b_hi, self.b_hf, self.b_hj, self.b_ho = \
+             tuple(nn.Parameter(t) for t in torch.chunk(params['bias_hh_l0'], 4))
 
         self.U_i, self.U_f, self.U_j, self.U_o = \
-             torch.chunk(params['weight_hh_l0'], 4)
+             tuple(nn.Parameter(torch.transpose(t, 0, 1)) for t in torch.chunk(params['weight_hh_l0'], 4))
+             #torch.chunk(params['weight_hh_l0'], 4)
         
         # initial hidden state
-        self.h_0 = params['hidn_st0']
-        self.c_0 = params['cell_st0']
+        self.h_0 = nn.Parameter(params['hidn_st0'][0])
+        self.c_0 = nn.Parameter(params['cell_st0'][0])
         
         # output layer (fully connected)
-        self.W_y = params['weight']
-        self.b_y = params['bias']
+        self.W_y = nn.Parameter(torch.transpose(params['weight'], 0, 1))
+        self.b_y = nn.Parameter(params['bias'])
 
-        self.input_ = params['input']
-        self.target = params['target']
+        self.input_ = nn.Parameter(params['input'])
+        self.target = nn.Parameter(params['target'])
         self.grads = None
                 
     def step(self, x_t, h, c):
         #  forward pass for a single time step
-        # hint: a more clever implementation could combine all these and select the different parts later
         j = self.activation_j(
-            torch.matmul(self.W_j, x_t) + torch.matmul(self.U_j,h) + self.b_j
+            torch.matmul(x_t, self.W_j) + torch.matmul(h, self.U_j) + self.b_ij + self.b_hj
         )
         i = self.activation_i(
-            torch.matmul(self.W_i, x_t) + torch.matmul(self.U_i,h) + self.b_i
+            torch.matmul(x_t, self.W_i) + torch.matmul(h, self.U_i) + self.b_ii + self.b_hi
         )
         f = self.activation_f(
-            torch.matmul(self.W_f, x_t) + torch.matmul(self.U_f,h) + self.b_f
+            torch.matmul(x_t, self.W_f) + torch.matmul(h, self.U_f) + self.b_if + self.b_hf
         )        
         o = self.activation_o(
-            torch.matmul(self.W_o, x_t) + torch.matmul(self.U_o,h) + self.b_o
+            torch.matmul(x_t, self.W_o) + torch.matmul(h, self.U_o) + self.b_io + self.b_ho
         )
-        
         
         c = f * c + i * j
         
@@ -111,7 +114,7 @@ class NaiveLSTM(nn.Module):
         # iterate over time axis (1)
         for t in range(n_steps):
             # give previous hidden state and input from the current time step
-            h, c = self.step(x[:, t], h, c)
+            h, c = self.step(x[:,t], h, c)
             hidden_states.append(h)
         hidden_states = torch.stack(hidden_states, 1)
         
@@ -123,48 +126,23 @@ class NaiveLSTM(nn.Module):
     
     def forward(self, x, h, c):
         # x: b, t, d
+
+         # 1 x h
+         # turns into
+         # bs x h
         batch_size = x.shape[0] 
         if h is None:
-            h = self.h_0.repeat_interleave(batch_size, 0)
+            h = self.h_0 #.repeat_interleave(batch_size, 0)
         if c is None:
-            c = self.c_0.repeat_interleave(batch_size, 0)
+            c = self.c_0 #.repeat_interleave(batch_size, 0)
         y_hat, h, c = self.iterate_series(x, h, c)
         return y_hat, h, c
     
-    def auto_regression(self, x_0, h, c, steps):
-        # one-to-many task (steps = \delta')
-        x_prev = x_0
-        y_hat = []
-        # iterate over time axis (1)
-        for t in range(steps):
-            # give previous hidden state and input from the current time step
-            h, c = self.step(x_prev, h, c)
-            # here we need to apply the output layer on each step individually
-            x_prev = torch.matmul(h, self.W_y) + self.b_y
-            
-            y_hat.append(x_prev)
-        y_hat = torch.stack(y_hat, 1)
-        return y_hat, h, c
-    
-    def many_to_one(self, x, h, c):
-        # not required
-        # returns the last prediction and the hidden state
-        y_hat, h, c = self(x, h, c)
-        return y_hat[:, -1], h, c # only return the last prediction
-        
-    def many_to_many_async(self, x, h, c, steps):
-        # not required
-        # combines many-to-one and one-to-many
-        x_0, h, c = self.many_to_one(x, h, c)
-        return self.auto_regression(x_0, h, c, steps)
-
     def vjp(self, input_, target):
-        x = self.input_ if self.input_ else input_
-        y = self.target if self.target else target
+        x = input_ if self.input_ == None else self.input_
+        y = target if self.target == None else self.target
         x, y = x.to(device), y.to(device)
         h = c = None
-        # reset gradients
-        #optimizer.zero_grad()
         
         # get predictions (forward pass)
         y_hat, h, c = self(x, h, c)
@@ -173,17 +151,17 @@ class NaiveLSTM(nn.Module):
         loss = torch.mean((y_hat - y)**2)        
         # backprop
         loss.backward()
-        print("loss")
-        print(loss)
-        #self.grads = dict(chain(self.lstm.named_parameters(), self.linear.named_parameters()))
-        #print("grads")
-        #for name, p in self.grads.items():
-        #  print(name)
-        #  print(p.size())
-        #  print(p)
-    
 
-    def test(self, input_, target, verbose=True):
+        d = dict(self.named_parameters())
+        self.grads = {  'weight_ih': torch.stack([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
+                      , 'weight_hh': torch.stack([torch.transpose(g, 0, 1) for g in [d['U_i'], d['U_f'], d['U_j'], d['U_o']]])
+                      , 'bias_ih'  : torch.stack([d['b_ii'], d['b_if'], d['b_ij'], d['b_io']])
+                      , 'bias_hh'  : torch.stack([d['b_hi'], d['b_hf'], d['b_hj'], d['b_ho']])
+                      , 'weight'   : d['W_y']
+                      , 'bias'     : d['b_y']
+                     }
+
+    def test(self, filename, input_, target, verbose=True):
         input_ = input_ if self.input_ == None else self.input_
         target = target if self.target == None else self.target
         #self.to(device)
@@ -196,7 +174,7 @@ class NaiveLSTM(nn.Module):
         #self.dump(input_, target)
         #self.dump_output()
         if verbose:
-          print(self.filename)
+          print(filename)
           print(f"forward time: {forward_end-forward_start}")
           print(f"grad time   : {vjp_end-vjp_start}")
           print(f"total time  : {vjp_end - forward_start}")
@@ -227,11 +205,11 @@ class RNNLSTM(nn.Module):
                      , hidden_size = h
                      , num_layers = num_layers
                      , bias = True
-                     , batch_first = False
+                     , batch_first = True
                      , dropout = 0
                      , bidirectional = False
                      , proj_size = 0)
-
+    #(1, 2, 3)
     self.hidn_st0 = torch.zeros(self.num_layers, self.bs, self.h).to(device)
     self.cell_st0 =torch.zeros(self.num_layers, self.bs, self.h).to(device)
     self.linear = nn.Linear(self.output_size, self.d)
@@ -295,11 +273,7 @@ class RNNLSTM(nn.Module):
   def forward(self, input_):
    input_ = self.input_ if self.input_ else input_
    outputs, st = self.lstm(input_, (self.hidn_st0, self.cell_st0))
-   print("st")
-   print(st)
-   print("outputs")
-   print(outputs)
-   output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.n, self.bs, self.d))
+   output = torch.reshape(self.linear(torch.cat([t for t in outputs])), (self.bs, self.n, self.d))
    self.res = output
    return output
 
@@ -308,21 +282,11 @@ class RNNLSTM(nn.Module):
     target = self.target if self.target else target
     self.zero_grad()
     output = self(input_)
-    print("output")
-    print(output)
-    print("target")
-    print(target)
     loss_function = nn.MSELoss(reduction='mean')
     loss = loss_function(output, target)
     loss.backward(gradient=torch.tensor(1.0))
-    print("loss")
-    print(loss)
     self.grads = dict(chain(self.lstm.named_parameters(), self.linear.named_parameters()))
-    print("grads")
-    for name, p in self.grads.items():
-      print(name)
-      print(p.size())
-      print(p)
+    print(self.grads)
 
   def test(self, input_, target, verbose=True):
     input_ = self.input_ if self.input_ else input_
