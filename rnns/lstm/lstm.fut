@@ -44,12 +44,9 @@ let step [bs] [hx4] [h] [d]
 	 (inp_els: [bs][d]real)
 	 (hidn_st: [h][bs]real, cell_st: [h][bs]real)
 	 : ([h][bs]real, [h][bs]real) =
-  let mm_ih = map (matvec inp_els) wght_ih |> opaque
-    -- map (matvec wght_ih) inp_els |> opaque
 
+  let mm_ih = map (matvec inp_els) wght_ih |> opaque
   let mm_hh = matmul wght_hh hidn_st |> opaque
-    -- map (matvec (transpose hidn_st)) wght_hh |> opaque
-    -- map (matvec wght_hh) hidn_st |> opaque
 
   let ingate0     = mkGate h 0     mm_ih mm_hh bias
   let forgetgate0 = mkGate h h     mm_ih mm_hh bias
@@ -60,17 +57,6 @@ let step [bs] [hx4] [h] [d]
   let forgetgate = map (map sigmoid) forgetgate0
   let cellgate   = map (map tanh   ) cellgate0
   let outgate    = map (map sigmoid) outgate0
-
-
---  let gates = map2 (map2 (+)) mm_ih mm_hh
---           |> map2 (\b row -> map (+b) row) bias
---
---  let gates'     = assert (4*h == hx4)
---                          (unflatten 4 h gates)
---  let ingate     = map (map sigmoid) (gates'[0])
---  let forgetgate = map (map sigmoid) (gates'[1])
---  let cellgate   = map (map tanh   ) (gates'[2])
---  let outgate    = map (map sigmoid) (gates'[3])
 
   let cell_st' =  map2 (map2 (*)) ingate cellgate
 	       |> map2 (map2 (+))
@@ -89,7 +75,7 @@ let lstmPrd [bs][n][d][h][hx4]
 	    (bias_hh:    [hx4]real)
 	    (wght_y:    [h][d]real)
 	    (bias_y:       [d]real)
-	  : ([][d]real, [][h]real, [h][bs]real) = --([n][bs][d]real, [][h]real, [h][bs]real) =
+	  : ([][d]real, [][h]real, [h][bs]real) =
   -- rnn component
   let hidn_stack0  = replicate bs zero
 		  |> replicate h
@@ -115,21 +101,20 @@ let lstmPrd [bs][n][d][h][hx4]
 	    |> map (map2 (+) bias_y)
 
   in  (y_hat, hidn_stack', cell_st)
-  -- hidden_states[:, h-1] instead of hidn_stack in the return?
 
 entry lstmPrd_ [bs][n][d][h][hx4]
-	    (input: [n][bs][d]real)
-	    (target: [n][bs][d]real)
-	    (hidn_st0: [h][bs]real)
-	    (cell_st0: [h][bs]real)
-	    (wght_ih: [hx4][d]real)
-	    (wght_hh: [hx4][h]real)
-	    (bias_ih:    [hx4]real)
-	    (bias_hh:    [hx4]real)
-	    (wght_y:    [h][d]real)
-	    (bias_y:       [d]real)
-  = ((lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y).0,
-     target)
+	       (input: [n][bs][d]real)
+	       (_target: [n][bs][d]real)
+	       (hidn_st0: [h][bs]real)
+	       (cell_st0: [h][bs]real)
+	       (wght_ih: [hx4][d]real)
+	       (wght_hh: [hx4][h]real)
+	       (bias_ih:    [hx4]real)
+	       (bias_hh:    [hx4]real)
+	       (wght_y:    [h][d]real)
+	       (bias_y:       [d]real)
+	       (_loss_adj: real)  =
+  (lstmPrd input hidn_st0 cell_st0 wght_ih wght_hh bias_ih bias_hh wght_y bias_y).0
 
 ----------------------------------------------------------------
 -- `bs`  is the batch size (for the moment `bs = 1`)          --
@@ -169,41 +154,7 @@ let lstmObj [bs][n][d][h][hx4]
     |> sum
   let loss = tot_loss / (fromi64 (n*bs*d))
   in  loss
---  let y_y_hat  = map2 (map2 zip) input_hat input
---              |> flatten
---              |> flatten
---  let loss = meanSqr y_y_hat
---  in  loss
 
-entry lstmObj_ [bs][n][d][h][hx4]
-	    (input: [n][bs][d]real)
-	    (target: [n][bs][d]real)
-	    (hidn_st0: [h][bs]real)
-	    (cell_st0: [h][bs]real)
-	    ( wght_ih: [hx4][d]real)
-	    ( wght_hh: [hx4][h]real)
-	    ( bias_ih:    [hx4]real)
-	    ( bias_hh:    [hx4]real)
-	    ( wght_y:    [h][d]real)
-	    ( bias_y:       [d]real)
-	    : real =
-  lstmObj
-	    input
-	    target
-	    hidn_st0
-	    cell_st0
-	    ( wght_ih
-	    , wght_hh
-	    , bias_ih
-	    , bias_hh
-	    , wght_y
-	    , bias_y)
-
-
--- ==
--- compiled random input { [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [1024]f32 [256][80]f32 [80]f32 f32 }
-
--- Trying with: bs = 1024, d = 80, h = 256, n = 300
 entry rev_J [bs][n][d][h][hx4]
 	 (input: [n][bs][d]real)
 	 (target: [n][bs][d]real)
@@ -269,3 +220,15 @@ entry fwd_J [bs][n][d][h][hx4]
 	 ,tabulate hx4      (\i ->   grad (zeros_tup with 3 = onehot loss_adj hx4 i))
 	 ,tabulate_2d h d   (\i j -> grad (zeros_tup with 4 = onehot_2d loss_adj h d (i,j)))
 	 ,tabulate d        (\i ->   grad (zeros_tup with 5 = onehot loss_adj d i)))
+
+-- ==
+-- entry: lstmPrd_
+-- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.out
+-- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.out
+-- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.out
+
+-- ==
+-- entry: fwd_J rev_J
+-- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.J
+-- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.J
+-- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.J
