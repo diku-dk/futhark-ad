@@ -141,6 +141,20 @@ let lstmObj [bs][n][d][h][hx4]
   let loss = tot_loss / (fromi64 (n*bs*d))
   in  loss
 
+entry lstmObj_ [bs][n][d][h][hx4]
+	 (input: [n][bs][d]real)
+	 (target: [n][bs][d]real)
+	 (hidn_st0: [h][bs]real)
+	 (cell_st0: [h][bs]real)
+	 (wght_ih: [hx4][d]real)
+	 (wght_hh: [hx4][h]real)
+	 (bias_ih:    [hx4]real)
+	 (bias_hh:    [hx4]real)
+	 (wght_y:    [h][d]real)
+	 (bias_y:       [d]real)
+	 (_loss_adj : real) =
+  lstmObj input target hidn_st0 cell_st0 (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y)
+
 entry rev_J [bs][n][d][h][hx4]
 	 (input: [n][bs][d]real)
 	 (target: [n][bs][d]real)
@@ -166,7 +180,17 @@ entry rev_J [bs][n][d][h][hx4]
       (wght_ih, wght_hh, bias_ih, bias_hh, wght_y, bias_y) loss_adj
 
 -- ==
+-- entry: lstmObj_
+-- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.out
+-- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.out
+-- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.out
+-- compiled input @ data/lstm-bs3-n20-d300-h192.in output @ data/lstm-bs3-n20-d300-h192.out
+-- compiled input @ data/lstm-bs1024-n300-d80-h256.in output @ data/lstm-bs1024-n300-d80-h256.out
+
+-- ==
 -- entry: rev_J
 -- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.J
 -- compiled input @ data/lstm-bs3-n5-d10-h5.in output @ data/lstm-bs3-n5-d10-h5.J
 -- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.J
+-- compiled input @ data/lstm-bs3-n20-d300-h192.in output @ data/lstm-bs3-n20-d300-h192.J
+-- compiled input @ data/lstm-bs1024-n300-d80-h256.in
