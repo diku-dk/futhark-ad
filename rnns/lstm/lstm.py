@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from itertools import chain
 
-
+torch.set_default_dtype(torch.float32)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
@@ -19,8 +19,8 @@ print('Using device:', device)
 parameters = [ (2, 3, 4, 3)
              , (3, 5, 10, 5)
              , (10, 100, 50, 20)
-#             , (3, 20, 300, 192)
-#             , (1024, 300, 80, 256)
+             , (3, 20, 300, 192)
+             , (1024, 300, 80, 256)
              ]
 
 def equal(m1, m2):
@@ -41,9 +41,10 @@ def report_time(model, f_start, f_end, vjp_start, vjp_end, filename=None):
     print(f"{model}   {filename}:")
   else:
     print(f"{model}:")
-  print(f"forward time: {f_end-f_start}")
-  print(f"grad time   : {vjp_end-vjp_start}")
-  print(f"total time  : {vjp_end-f_start}")
+  print(f"forward time: {f_end-f_start}μs")
+  print(f"grad time   : {vjp_end-vjp_start}μs")
+  print(f"total time  : {vjp_end-f_start}μs")
+  print(f"grad/forward: {(vjp_end-vjp_start)/(f_end-f_start)}")
 
 def read(filename):
    with open(filename + ".json",'r') as f:
@@ -52,12 +53,12 @@ def read(filename):
         d[name] = torch.tensor(p, dtype=torch.float32)
     return d
 
-def gen_data():
+def gen_data(verbose=True):
   for params in parameters:
     (bs,n,d,h) = params
     filename = gen_filename(bs, n, d, h, ext=None)
     model = RNNLSTM(*params, filename)
-    model.run(gen_data=True)
+    model.run(gen_data=True, verbose=verbose)
 
 def print_values(name, model):
   print(f"Values for {name}:")
@@ -68,7 +69,7 @@ def print_values(name, model):
   pprint(model.grads)
 
 def test(mkdata=False, verbose=False):
-  if mkdata: gen_data()
+  if mkdata: gen_data(verbose=False)
   for params in parameters:
     (bs,n,d,h) = params
     filename = gen_filename(bs, n, d, h, ext=None)
@@ -211,12 +212,12 @@ class NaiveLSTM(nn.Module):
       input_ = self.input_ if input_ is None else input_
       target = self.target if target is None else target
       self.to(device)
-      f_start = time.time()
+      f_start = time.time_ns() / 1000
       self.forward(input_, None, None)
-      f_end = time.time()
-      vjp_start  = time.time()
+      f_end = time.time_ns() / 1000
+      vjp_start  = time.time_ns() / 1000
       self.vjp(input_, target)
-      vjp_end = time.time()
+      vjp_end = time.time_ns() / 1000
       report_time("naive        ", f_start, f_end, vjp_start, vjp_end, filename)
 
 class RNNLSTM(nn.Module):
@@ -291,7 +292,8 @@ class RNNLSTM(nn.Module):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
     with open(self.filename + ".out",'wb') as f:
-      futhark_data.dump(self.output.cpu().detach().numpy().reshape(self.bs*self.n, -1),f, True)
+      #futhark_data.dump(self.output.cpu().detach().numpy().reshape(self.bs*self.n, -1),f, True)
+      futhark_data.dump(self.loss.cpu().detach().numpy(),f, True)
     with open(self.filename + ".J",'wb') as f:
       for n, g in self.grads.items():
         if n == 'weight':
@@ -324,7 +326,7 @@ class RNNLSTM(nn.Module):
     self.grads = \
       {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
 
-  def run(self, input_=None, target=None, gen_data=False):
+  def run(self, input_=None, target=None, gen_data=False, verbose=True):
     if not gen_data and (input_ is None or target is None):
        print("Error: must input and target data!")
        exit(1)
@@ -332,14 +334,14 @@ class RNNLSTM(nn.Module):
       input_ = torch.randn(self.n, self.bs, self.d).to(device)
       target = torch.randn(self.n, self.bs, self.d).to(device)
     self.to(device)
-    f_start = time.time()
+    f_start = time.time_ns() / 1000
     self.forward(input_)
-    f_end = time.time()
-    vjp_start  = time.time()
+    f_end = time.time_ns() / 1000
+    vjp_start  = time.time_ns() / 1000
     self.vjp(input_, target)
-    vjp_end = time.time()
+    vjp_end = time.time_ns() / 1000
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
-    if not gen_data:
+    if verbose:
       report_time("torch.nn.LSTM", f_start, f_end, vjp_start, vjp_end, self.filename)
