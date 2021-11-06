@@ -17,11 +17,11 @@ print('Using device:', device)
 
 # bs, n, d, h
 parameters = [
-            #  (2, 3, 4, 3)
+            # (2, 3, 4, 3)
             #, (3, 5, 10, 5)
             #, (10, 100, 50, 20)
-               (3, 20, 300, 192)
-            #, (1024, 300, 80, 256)
+              (64, 20, 300, 192)
+            #(1024, 300, 80, 256)
              ]
 
 def get_time():
@@ -61,7 +61,7 @@ def gen_data(verbose=True):
     (bs,n,d,h) = params
     filename = gen_filename(bs, n, d, h, ext=None)
     model = RNNLSTM(*params, filename)
-    model.run(gen_data=True, verbose=verbose)
+    model.run(gen_data=True)
 
 def print_values(name, model):
   print(f"Values for {name}:")
@@ -343,7 +343,7 @@ class RNNLSTM(nn.Module):
     self.grads = \
       {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
 
-  def run(self, input_=None, target=None, gen_data=False, verbose=True):
+  def run(self, input_=None, target=None, gen_data=False):
     if not gen_data and (input_ is None or target is None):
        print("Error: must input and target data!")
        exit(1)
@@ -357,7 +357,7 @@ class RNNLSTM(nn.Module):
     vjp_start  = get_time()
     self.vjp(input_, target)
     vjp_end = get_time()
-    return (f_end - f_start), (vjp_end - vjp_start)
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
+    return (f_end - f_start), (vjp_end - vjp_start)
