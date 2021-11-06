@@ -16,12 +16,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
 # bs, n, d, h
-parameters = [ (2, 3, 4, 3)
-             , (3, 5, 10, 5)
-             , (10, 100, 50, 20)
-             , (3, 20, 300, 192)
-             , (1024, 300, 80, 256)
+parameters = [
+            #  (2, 3, 4, 3)
+            #, (3, 5, 10, 5)
+            #, (10, 100, 50, 20)
+               (3, 20, 300, 192)
+            #, (1024, 300, 80, 256)
              ]
+
+def get_time():
+   return time.time() * 10**6
 
 def equal(m1, m2):
    grads_equal = True
@@ -36,15 +40,14 @@ def gen_filename(bs, n, d, h, directory="data", ext=None):
 
   return path if ext is None else f"{path}.{ext}"
 
-def report_time(model, f_start, f_end, vjp_start, vjp_end, filename=None):
+def report_time(model, ft, rt, filename=None):
   if filename:
     print(f"{model}   {filename}:")
   else:
     print(f"{model}:")
-  print(f"forward time: {f_end-f_start}μs")
-  print(f"grad time   : {vjp_end-vjp_start}μs")
-  print(f"total time  : {vjp_end-f_start}μs")
-  print(f"grad/forward: {(vjp_end-vjp_start)/(f_end-f_start)}")
+  print(f"forward time: {ft}μs")
+  print(f"grad time   : {rt}μs")
+  print(f"relative: {rt/ft}")
 
 def read(filename):
    with open(filename + ".json",'r') as f:
@@ -68,23 +71,37 @@ def print_values(name, model):
   print("Grads:")
   pprint(model.grads)
 
-def test(mkdata=False, verbose=False):
+def test(mkdata=False, verbose=False, runs=1):
   if mkdata: gen_data(verbose=False)
   for params in parameters:
-    (bs,n,d,h) = params
-    filename = gen_filename(bs, n, d, h, ext=None)
-    tensors = read(filename)
-    model = RNNLSTM(*params, filename, tensors)
-    model.run(tensors['input'].to(device), tensors['target'].to(device))
-    naive = NaiveLSTM(tensors)
-    naive.run(filename=filename)
-    if verbose:
-       print_values("torch.nn.LSTM", model)
-       print_values("naive", naive)
-    if equal(model, naive):
-      print(f"test data {filename} validates!")
-    else:
-      print(f"Error: test data {filename} doesn't validate!")
+    ft_model_t = 0
+    rt_model_t = 0
+    ft_naive_t = 0
+    rt_naive_t = 0
+    for run in range(runs):
+      (bs,n,d,h) = params
+      filename = gen_filename(bs, n, d, h, ext=None)
+      tensors = read(filename)
+      model = RNNLSTM(*params, filename, tensors)
+      ft_model, rt_model = model.run(tensors['input'].to(device), tensors['target'].to(device))
+      naive = NaiveLSTM(tensors)
+      ft_naive, rt_naive = naive.run(filename=filename)
+      ft_model_t += ft_model
+      rt_model_t += rt_model
+      ft_naive_t += ft_naive
+      rt_naive_t += rt_naive
+
+      if verbose:
+         print_values("torch.nn.LSTM", model)
+         print_values("naive", naive)
+         if equal(model, naive):
+           print(f"test data {filename} validates!")
+         else:
+           print(f"Error: test data {filename} doesn't validate!")
+         print()
+
+    report_time("naive        ", ft_naive_t / runs, rt_naive_t / runs, filename)
+    report_time("torch.nn.LSTM", ft_model_t / runs, rt_model_t / runs, filename)
     print()
 
 class NaiveLSTM(nn.Module):
@@ -212,13 +229,13 @@ class NaiveLSTM(nn.Module):
       input_ = self.input_ if input_ is None else input_
       target = self.target if target is None else target
       self.to(device)
-      f_start = time.time_ns() / 1000
+      f_start = get_time()
       self.forward(input_, None, None)
-      f_end = time.time_ns() / 1000
-      vjp_start  = time.time_ns() / 1000
+      f_end = get_time()
+      vjp_start  = get_time()
       self.vjp(input_, target)
-      vjp_end = time.time_ns() / 1000
-      report_time("naive        ", f_start, f_end, vjp_start, vjp_end, filename)
+      vjp_end = get_time()
+      return (f_end - f_start), (vjp_end - vjp_start)
 
 class RNNLSTM(nn.Module):
   def __init__( self
@@ -334,14 +351,13 @@ class RNNLSTM(nn.Module):
       input_ = torch.randn(self.n, self.bs, self.d).to(device)
       target = torch.randn(self.n, self.bs, self.d).to(device)
     self.to(device)
-    f_start = time.time_ns() / 1000
+    f_start = get_time()
     self.forward(input_)
-    f_end = time.time_ns() / 1000
-    vjp_start  = time.time_ns() / 1000
+    f_end = get_time()
+    vjp_start  = get_time()
     self.vjp(input_, target)
-    vjp_end = time.time_ns() / 1000
+    vjp_end = get_time()
+    return (f_end - f_start), (vjp_end - vjp_start)
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
-    if verbose:
-      report_time("torch.nn.LSTM", f_start, f_end, vjp_start, vjp_end, self.filename)
