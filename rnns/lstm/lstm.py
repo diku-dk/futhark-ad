@@ -20,7 +20,7 @@ parameters = [
             # (2, 3, 4, 3)
             #, (3, 5, 10, 5)
             #, (10, 100, 50, 20)
-              (64, 20, 300, 192)
+              (1024, 20, 300, 192)
             #(1024, 300, 80, 256)
              ]
 
@@ -45,8 +45,8 @@ def report_time(model, ft, rt, filename=None):
     print(f"{model}   {filename}:")
   else:
     print(f"{model}:")
-  print(f"forward time: {ft}μs")
-  print(f"grad time   : {rt}μs")
+  print(f"forward time: {ft*1000}μs")
+  print(f"grad time   : {rt*1000}μs")
   print(f"relative: {rt/ft}")
 
 def read(filename):
@@ -204,18 +204,21 @@ class NaiveLSTM(nn.Module):
       self.zero_grad()
       x = input_ if self.input_ == None else self.input_
       y = target if self.target == None else self.target
-      x, y = x.to(device), y.to(device)
       h = c = None
 
+      start  = torch.cuda.Event(enable_timing=True)
+      end = torch.cuda.Event(enable_timing=True)
+      start.record()
       # get predictions (forward pass)
       y_hat, h, c = self(x, h, c)
 
-      # calculate mean squared error
       loss = torch.mean((y_hat - y)**2)
       # backprop
       loss.backward(gradient=torch.tensor(1.0))
-      self.loss = loss
+      end.record()
+      torch.cuda.synchronize()
 
+      self.loss = loss
       d = {n: p.grad for n, p in self.named_parameters()}
       self.grads = {  'weight_ih_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
                     , 'weight_hh_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['U_i'], d['U_f'], d['U_j'], d['U_o']]])
@@ -224,18 +227,19 @@ class NaiveLSTM(nn.Module):
                     , 'weight'      : torch.transpose(d['W_y'], 0, 1)
                     , 'bias'        : d['b_y']
                    }
+      return start.elapsed_time(end)
 
   def run(self, filename=None, input_=None, target=None):
       input_ = self.input_ if input_ is None else input_
       target = self.target if target is None else target
       self.to(device)
-      f_start = get_time()
+      start  = torch.cuda.Event(enable_timing=True)
+      end = torch.cuda.Event(enable_timing=True)
+      start.record()
       self.forward(input_, None, None)
-      f_end = get_time()
-      vjp_start  = get_time()
-      self.vjp(input_, target)
-      vjp_end = get_time()
-      return (f_end - f_start), (vjp_end - vjp_start)
+      end.record()
+      vjp_time = self.vjp(input_, target)
+      return start.elapsed_time(end), vjp_time
 
 class RNNLSTM(nn.Module):
   def __init__( self
@@ -334,14 +338,21 @@ class RNNLSTM(nn.Module):
    return output
 
   def vjp(self, input_, target):
+
+    start  = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
     self.zero_grad()
     output = self(input_)
     loss_function = nn.MSELoss(reduction='mean')
     loss = loss_function(output, target)
     loss.backward(gradient=torch.tensor(1.0))
+    end.record()
+    torch.cuda.synchronize()
     self.loss = loss
     self.grads = \
       {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
+    return start.elapsed_time(end)
 
   def run(self, input_=None, target=None, gen_data=False):
     if not gen_data and (input_ is None or target is None):
@@ -351,13 +362,14 @@ class RNNLSTM(nn.Module):
       input_ = torch.randn(self.n, self.bs, self.d).to(device)
       target = torch.randn(self.n, self.bs, self.d).to(device)
     self.to(device)
-    f_start = get_time()
+    start  = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
     self.forward(input_)
-    f_end = get_time()
-    vjp_start  = get_time()
-    self.vjp(input_, target)
-    vjp_end = get_time()
+    end.record()
+    torch.cuda.synchronize()
+    vjp_time = self.vjp(input_, target)
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
-    return (f_end - f_start), (vjp_end - vjp_start)
+    return start.elapsed_time(end), vjp_time
