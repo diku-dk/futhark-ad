@@ -20,7 +20,7 @@ parameters = [
             # (2, 3, 4, 3)
             #, (3, 5, 10, 5)
             #, (10, 100, 50, 20)
-              (64, 20, 300, 192)
+              (1024, 20, 300, 192)
             #(1024, 300, 80, 256)
              ]
 
@@ -204,18 +204,18 @@ class NaiveLSTM(nn.Module):
       self.zero_grad()
       x = input_ if self.input_ == None else self.input_
       y = target if self.target == None else self.target
-      x, y = x.to(device), y.to(device)
       h = c = None
 
+      vjp_start  = get_time()
       # get predictions (forward pass)
       y_hat, h, c = self(x, h, c)
 
-      # calculate mean squared error
       loss = torch.mean((y_hat - y)**2)
       # backprop
       loss.backward(gradient=torch.tensor(1.0))
-      self.loss = loss
+      vjp_end = get_time()
 
+      self.loss = loss
       d = {n: p.grad for n, p in self.named_parameters()}
       self.grads = {  'weight_ih_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
                     , 'weight_hh_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['U_i'], d['U_f'], d['U_j'], d['U_o']]])
@@ -224,6 +224,7 @@ class NaiveLSTM(nn.Module):
                     , 'weight'      : torch.transpose(d['W_y'], 0, 1)
                     , 'bias'        : d['b_y']
                    }
+      return vjp_end - vjp_start
 
   def run(self, filename=None, input_=None, target=None):
       input_ = self.input_ if input_ is None else input_
@@ -232,10 +233,8 @@ class NaiveLSTM(nn.Module):
       f_start = get_time()
       self.forward(input_, None, None)
       f_end = get_time()
-      vjp_start  = get_time()
-      self.vjp(input_, target)
-      vjp_end = get_time()
-      return (f_end - f_start), (vjp_end - vjp_start)
+      vjp_time = self.vjp(input_, target)
+      return (f_end - f_start), vjp_time
 
 class RNNLSTM(nn.Module):
   def __init__( self
@@ -334,14 +333,17 @@ class RNNLSTM(nn.Module):
    return output
 
   def vjp(self, input_, target):
+    vjp_start  = get_time()
     self.zero_grad()
     output = self(input_)
     loss_function = nn.MSELoss(reduction='mean')
     loss = loss_function(output, target)
     loss.backward(gradient=torch.tensor(1.0))
+    vjp_end = get_time()
     self.loss = loss
     self.grads = \
       {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
+    return vjp_end - vjp_start
 
   def run(self, input_=None, target=None, gen_data=False):
     if not gen_data and (input_ is None or target is None):
@@ -354,10 +356,8 @@ class RNNLSTM(nn.Module):
     f_start = get_time()
     self.forward(input_)
     f_end = get_time()
-    vjp_start  = get_time()
-    self.vjp(input_, target)
-    vjp_end = get_time()
+    vjp_time = self.vjp(input_, target)
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
-    return (f_end - f_start), (vjp_end - vjp_start)
+    return (f_end - f_start), vjp_time
