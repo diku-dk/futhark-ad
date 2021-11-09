@@ -68,7 +68,7 @@ def load(filename):
    return futhark_data.load(f)
 
 def test(runs = 5):
-   g = load("gmm/data/10k/gmm_d10_K50")
+   g = load("../adbench/gmm/data/10k/gmm_d10_K50")
    gmm = PyTorchGMM()
    gmm.prepare(list(g))
    gmm.to(device)
