@@ -64,11 +64,11 @@ class PyTorchGMM(torch.nn.Module):
         return start.elapsed_time(end) / times
 
 def load(filename):
-   f = gzip.open(filename + ".in.gz")
+   f = gzip.open(filename)
    return futhark_data.load(f)
 
-def test(runs = 5):
-   g = load("../adbench/gmm/data/10k/gmm_d128_K200")
+def test(runs = 5, filename = "../adbench/gmm/data/10k/gmm_d128_K200.in.gz"):
+   g = load(filename)
    gmm = PyTorchGMM()
    gmm.prepare(list(g))
    gmm.to(device)
