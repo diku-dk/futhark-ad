@@ -8,13 +8,11 @@ let snd (_,y) = y
 
 let sumBy 'a (f : a -> f64)  (xs : []a) : f64 = map f xs |> f64.sum
 
-let l2normSq (v : []f64) = map (\x -> x * x) v |> f64.sum
+let l2normSq (v : []f64) = sumBy (\x -> x * x) v
 
-let logsumexp = sumBy (f64.exp) >-> f64.log
+let logsumexp = sumBy f64.exp >-> f64.log
 
-let vMinus [m] (xs : [m]f64) (ys : [m]f64) : [m]f64 = zip xs ys |> map (\(x, y) -> x - y)
-
-let frobeniusNormSq (mat : [][]f64) = flatten mat |> map (\x -> x * x) |> f64.sum
+let frobeniusNormSq (mat : [][]f64) = sumBy (\x -> x * x) (flatten mat)
 
 let unpackQ [d] (logdiag: [d]f64) (lt: []f64) : [d][d]f64  =
   tabulate_2d d d (\i j ->
@@ -31,26 +29,27 @@ let logsumexp_DArray (arr : []f64) =
     let sumShiftedExp = arr |> sumBy (\x -> f64.exp (x - mx))
     in f64.log sumShiftedExp + mx
 
-let logWishartPrior [k] (qsAndSums: [k]([][]f64, f64)) wishartGamma wishartM p =
+let logWishartPrior [k] (qs: [k][][]f64) (sums: [k]f64) wishartGamma wishartM p =
     let n = p + wishartM + 1
     let c = f64.i64 (n * p) * (f64.log wishartGamma - 0.5 * f64.log 2) - (logGammaDistrib (0.5 * f64.i64 n) p)
-    let frobenius = qsAndSums |> sumBy (fst >-> frobeniusNormSq)
-    let sumQs = qsAndSums |> sumBy snd
+    let frobenius = sumBy frobeniusNormSq qs
+    let sumQs = f64.sum sums
     in 0.5 * wishartGamma * wishartGamma * frobenius - f64.i64 wishartM * sumQs - f64.i64 k * c
 
 let gmmObjective [d][k][n] (alphas: [k]f64) (means: [k][d]f64) (icf: [k][]f64) (x: [n][d]f64) (wishartGamma: f64) (wishartM: i64) =
     let constant = -(f64.i64 n * f64.i64 d * 0.5 * f64.log (2 * f64.pi))
-    let alphasAndMeans = zip alphas means
     let logdiags = icf[:,:d]
     let lts = icf[:,d:]
-    let qsAndSums = zip (map2 unpackQ logdiags lts) (map f64.sum logdiags)
-    let slse = x |> sumBy (\xi ->
-                    logsumexp_DArray <| map2
-                        (\(q, sumQ) (alpha, meansk) ->
-                            let qximeansk = linalg_f64.matvecmul_row q (vMinus xi meansk)
-                            in -0.5 * l2normSq qximeansk + alpha + sumQ
-                        ) qsAndSums alphasAndMeans)
-    in constant + slse  - f64.i64 n * logsumexp alphas + logWishartPrior qsAndSums wishartGamma wishartM d
+    let qs = map2 unpackQ logdiags lts
+    let sumQs = map f64.sum logdiags
+    let onX xi =
+      map4 (\q sumQ alpha meansk ->
+              let qximeansk = linalg_f64.matvecmul_row q (map2 (-) xi meansk)
+              in -0.5 * l2normSq qximeansk + alpha + sumQ)
+           qs sumQs alphas means
+      |> logsumexp_DArray
+    let slse = sumBy onX x
+    in constant + slse  - f64.i64 n * logsumexp alphas + logWishartPrior qs sumQs wishartGamma wishartM d
 
 let grad f x = vjp f x 1f64
 
