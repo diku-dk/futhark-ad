@@ -21,7 +21,7 @@ c2w = toEnum . fromEnum
 (<:) = BS.cons
 
 strip :: ByteString -> ByteString
-strip = BS.dropWhile isSpaceWord8 . BS.dropWhileEnd isSpaceWord8
+strip = BS.dropWhile isSpaceWord8 . (BS.reverse . BS.dropWhile isSpaceWord8 . BS.reverse) 
 
 alphas :: Int -> IO ()
 alphas k = do
