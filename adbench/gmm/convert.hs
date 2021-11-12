@@ -5,9 +5,11 @@ module Main where
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.ByteString.Char8 (readInt, strip)
+import Data.ByteString.Char8 (readInt)
 import Data.Word (Word8)
 import System.IO (isEOF)
+import Data.Char (isSpace)
+import Data.ByteString.Internal (isSpaceWord8)
 
 c2w :: Char -> Word8
 c2w = toEnum . fromEnum
@@ -17,6 +19,9 @@ c2w = toEnum . fromEnum
 
 (<:) :: Word8 -> ByteString -> ByteString
 (<:) = BS.cons
+
+strip :: ByteString -> ByteString
+strip = BS.dropWhile isSpaceWord8 . BS.dropWhileEnd isSpaceWord8
 
 alphas :: Int -> IO ()
 alphas k = do
