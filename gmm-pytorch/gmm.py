@@ -7,7 +7,7 @@ import futhark_data
 import gzip
 
 torch.set_default_tensor_type(torch.cuda.FloatTensor)
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
@@ -38,6 +38,7 @@ class PyTorchGMM(torch.nn.Module):
     def calculate_objective(self, times):
         '''Calculates objective function many times.'''
 
+        self.objective = gmm_objective(*self.inputs, *self.params)
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
         start.record()
@@ -50,6 +51,12 @@ class PyTorchGMM(torch.nn.Module):
     def calculate_jacobian(self, times):
         '''Calculates objective function jacobian many times.'''
 
+
+        self.objective, self.gradient = torch_jacobian(
+                  gmm_objective,
+                  self.inputs,
+                  self.params
+        )
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
         start.record()
@@ -64,20 +71,23 @@ class PyTorchGMM(torch.nn.Module):
         return start.elapsed_time(end) / times
 
 def load(filename):
-   f = gzip.open(filename)
+   #f = gzip.open(filename)
+   f = open(filename)
    return futhark_data.load(f)
 
-def test(runs = 5, filename = "../adbench/gmm/data/10k/gmm_d128_K200.in.gz"):
-   g = load(filename)
-   gmm = PyTorchGMM()
-   gmm.prepare(list(g))
-   gmm.to(device)
-   f_time = gmm.calculate_objective(runs)
-   j_time = gmm.calculate_jacobian(runs)
-   print("objective time:")
-   print(f_time * 1000)
-   print("grad time:")
-   print(j_time * 1000)
+def test(runs = 5, filenames = ["../adbench/gmm/gmm_d128_K200.txt"]):
+   for filename in filenames:
+      g = load(filename)
+      gmm = PyTorchGMM()
+      gmm.prepare(list(g))
+      gmm.to(device)
+      f_time = gmm.calculate_objective(runs)
+      j_time = gmm.calculate_jacobian(runs)
+      print(filename)
+      print("objective time:")
+      print(f_time * 1000)
+      print("grad time:")
+      print(j_time * 1000)
 
 def log_wishart_prior(p, wishart_gamma, wishart_m, sum_qs, Qdiags, icf):
     n = p + wishart_m + 1
