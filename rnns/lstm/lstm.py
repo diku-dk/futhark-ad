@@ -11,7 +11,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from itertools import chain
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_tensor_type(torch.cuda.DoubleTensor)
+torch.set_default_dtype(torch.float64)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
