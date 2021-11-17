@@ -63,17 +63,8 @@ let gmmObjective [d][k][n]
                                 -0.5 * el + alpha + sumQ
                             ) row
                    ) tmp1 alphas sumQs
-        -- tmp2 : [k][n]f64
     let tmp3  = map logsumexp_DArray (transpose tmp2)
     let slse  = f64.sum tmp3
-
---    let onX xi =
---      map4 (\q sumQ alpha meansk ->
---              let qximeansk = linalg_f64.matvecmul_row q (map2 (-) xi meansk)
---              in -0.5 * l2normSq qximeansk + alpha + sumQ)
---           qs sumQs alphas means
---      |> logsumexp_DArray
---    let slse = sumBy onX x
     in constant + slse  - f64.i64 n * logsumexp alphas +
        logWishartPrior qs sumQs wishartGamma wishartM d
 
