@@ -7,7 +7,7 @@ import futhark_data
 import gzip
 
 torch.set_default_tensor_type(torch.cuda.FloatTensor)
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
