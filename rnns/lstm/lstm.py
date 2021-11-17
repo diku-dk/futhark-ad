@@ -54,7 +54,7 @@ def read(filename):
    with open(filename + ".json",'r') as f:
     d = json.load(f)
     for name, p in d.items():
-        d[name] = torch.tensor(p, dtype=torch.float32)
+        d[name] = torch.tensor(p, dtype=torch.float64)
     return d
 
 def gen_data(verbose=True):
@@ -62,7 +62,7 @@ def gen_data(verbose=True):
     (bs,n,d,h) = params
     filename = gen_filename(bs, n, d, h, ext=None)
     model = RNNLSTM(*params, filename)
-    model.run(gen_data=True)
+    model.run(runs = 1, gen_data=True)
 
 def print_values(name, model):
   print(f"Values for {name}:")
@@ -75,34 +75,25 @@ def print_values(name, model):
 def test(mkdata=False, verbose=False, runs=1):
   if mkdata: gen_data(verbose=False)
   for params in parameters:
-    ft_model_t = 0
-    rt_model_t = 0
-    ft_naive_t = 0
-    rt_naive_t = 0
-    for run in range(runs):
-      (bs,n,d,h) = params
-      filename = gen_filename(bs, n, d, h, ext=None)
-      tensors = read(filename)
-      model = RNNLSTM(*params, filename, tensors)
-      ft_model, rt_model = model.run(tensors['input'].to(device), tensors['target'].to(device))
-      naive = NaiveLSTM(tensors)
-      ft_naive, rt_naive = naive.run(filename=filename)
-      ft_model_t += ft_model
-      rt_model_t += rt_model
-      ft_naive_t += ft_naive
-      rt_naive_t += rt_naive
+    (bs,n,d,h) = params
+    filename = gen_filename(bs, n, d, h, ext=None)
+    tensors = read(filename)
+    model = RNNLSTM(*params, filename, tensors)
+    ft_model, rt_model = model.run(runs, tensors['input'].to(device), tensors['target'].to(device))
+    naive = NaiveLSTM(tensors)
+    ft_naive, rt_naive = naive.run(runs, filename=filename)
 
-      if verbose:
-         print_values("torch.nn.LSTM", model)
-         print_values("naive", naive)
-         if equal(model, naive):
-           print(f"test data {filename} validates!")
-         else:
-           print(f"Error: test data {filename} doesn't validate!")
-         print()
+    if verbose:
+          print_values("torch.nn.LSTM", model)
+          print_values("naive", naive)
+          if equal(model, naive):
+            print(f"test data {filename} validates!")
+          else:
+            print(f"Error: test data {filename} doesn't validate!")
+          print()
 
-    report_time("naive        ", ft_naive_t / runs, rt_naive_t / runs, filename)
-    report_time("torch.nn.LSTM", ft_model_t / runs, rt_model_t / runs, filename)
+    report_time("naive        ", ft_naive, rt_naive, filename)
+    report_time("torch.nn.LSTM", ft_model, rt_model, filename)
     print()
 
 class NaiveLSTM(nn.Module):
@@ -201,23 +192,36 @@ class NaiveLSTM(nn.Module):
       self.output = torch.transpose(y_hat, 0, 1)
       return y_hat, h, c
 
-  def vjp(self, input_, target):
+  def vjp(self, input_, target, runs):
       self.zero_grad()
       x = input_ if self.input_ == None else self.input_
       y = target if self.target == None else self.target
       h = c = None
 
-      start  = torch.cuda.Event(enable_timing=True)
-      end = torch.cuda.Event(enable_timing=True)
-      start.record()
       # get predictions (forward pass)
       y_hat, h, c = self(x, h, c)
-
+  
       loss = torch.mean((y_hat - y)**2)
       # backprop
       loss.backward(gradient=torch.tensor(1.0))
-      end.record()
+
+      start  = torch.cuda.Event(enable_timing=True)
+      end = torch.cuda.Event(enable_timing=True)
+      start.record()
+      for i in range(runs):
+
+        self.zero_grad()
+        x = input_ if self.input_ == None else self.input_
+        y = target if self.target == None else self.target
+        h = c = None
+        # get predictions (forward pass)
+        y_hat, h, c = self(x, h, c)
+  
+        loss = torch.mean((y_hat - y)**2)
+        # backprop
+        loss.backward(gradient=torch.tensor(1.0))
       torch.cuda.synchronize()
+      end.record()
 
       self.loss = loss
       d = {n: p.grad for n, p in self.named_parameters()}
@@ -228,19 +232,20 @@ class NaiveLSTM(nn.Module):
                     , 'weight'      : torch.transpose(d['W_y'], 0, 1)
                     , 'bias'        : d['b_y']
                    }
-      return start.elapsed_time(end)
+      return (start.elapsed_time(end) / runs)
 
-  def run(self, filename=None, input_=None, target=None):
+  def run(self, runs, filename=None, input_=None, target=None):
       input_ = self.input_ if input_ is None else input_
       target = self.target if target is None else target
       self.to(device)
       start  = torch.cuda.Event(enable_timing=True)
       end = torch.cuda.Event(enable_timing=True)
       start.record()
-      self.forward(input_, None, None)
+      for i in range(runs):
+        self.forward(input_, None, None)
       end.record()
-      vjp_time = self.vjp(input_, target)
-      return start.elapsed_time(end), vjp_time
+      vjp_time = self.vjp(input_, target, runs)
+      return (start.elapsed_time(end) / runs), vjp_time
 
 class RNNLSTM(nn.Module):
   def __init__( self
@@ -301,7 +306,7 @@ class RNNLSTM(nn.Module):
       else:
         d_futhark[name] = xs
 
-    d_futhark['loss_adj'] = np.float32(1.0)
+    d_futhark['loss_adj'] = np.float64(1.0)
 
     with open(self.filename + ".json",'w') as f:
        json.dump({name: p.tolist() for name, p in d.items()}, f)
@@ -326,7 +331,7 @@ class RNNLSTM(nn.Module):
   def read(self):
     d = json.load(self.filename + ".json",'w')
     for name, p in d.items():
-        d[name] = torch.tensor(p, dtype=torch.float32)
+        d[name] = torch.tensor(p, dtype=torch.float64)
     with torch.no_grad():
       for name, p in chain(self.lstm.named_parameters(), self.linear.named_parameters()):
         p.copy_(d[name])
@@ -338,24 +343,31 @@ class RNNLSTM(nn.Module):
    self.output = output
    return output
 
-  def vjp(self, input_, target):
+  def vjp(self, input_, target, runs):
 
-    start  = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    start.record()
     self.zero_grad()
     output = self(input_)
     loss_function = nn.MSELoss(reduction='mean')
     loss = loss_function(output, target)
     loss.backward(gradient=torch.tensor(1.0))
-    end.record()
+
+    start  = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
+    for i in range(runs):
+      self.zero_grad()
+      output = self(input_)
+      loss_function = nn.MSELoss(reduction='mean')
+      loss = loss_function(output, target)
+      loss.backward(gradient=torch.tensor(1.0))
     torch.cuda.synchronize()
+    end.record()
     self.loss = loss
     self.grads = \
       {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
-    return start.elapsed_time(end)
+    return (start.elapsed_time(end) / runs)
 
-  def run(self, input_=None, target=None, gen_data=False):
+  def run(self, runs, input_=None, target=None, gen_data=False):
     if not gen_data and (input_ is None or target is None):
        print("Error: must input and target data!")
        exit(1)
@@ -363,14 +375,16 @@ class RNNLSTM(nn.Module):
       input_ = torch.randn(self.n, self.bs, self.d).to(device)
       target = torch.randn(self.n, self.bs, self.d).to(device)
     self.to(device)
+    self.forward(input_)
     start  = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
     start.record()
-    self.forward(input_)
-    end.record()
+    for i in range(runs):
+      self.forward(input_)
     torch.cuda.synchronize()
-    vjp_time = self.vjp(input_, target)
+    end.record()
+    vjp_time = self.vjp(input_, target, runs)
     if gen_data:
       self.dump(input_, target)
       self.dump_output()
-    return start.elapsed_time(end), vjp_time
+    return (start.elapsed_time(end) / runs), vjp_time
