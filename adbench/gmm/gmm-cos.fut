@@ -112,9 +112,14 @@ entry calculate_jacobian [d][k][n]
 
 -- ==
 -- entry: calculate_objective
--- compiled random input { [200]f32 [200][128]f32 [200][8256]f32 [1024][128]f32 1.0f32 3i64 }
-
--- compiled random input { [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [1024]f32 [256][80]f32 [80]f32 f32 }
+-- compiled input @ data/1k/gmm_d64_K200.in.gz
+-- compiled input @ data/1k/gmm_d128_K200.in.gz
+-- compiled input @ data/10k/gmm_d32_K200.in.gz
+-- compiled input @ data/10k/gmm_d64_K25.in.gz
+-- compiled input @ data/10k/gmm_d128_K25.in.gz
+-- compiled input @ data/10k/gmm_d128_K200.in.gz
+-- compiled input @ data/2.5M/gmm_d128_K5.in.gz
+-- compiled input @ data/2.5M/gmm_d64_K5.in.gz
 
 -- compiled input @ data/1k/gmm_d2_K10.in.gz
 -- compiled input @ data/1k/gmm_d64_K100.in.gz
@@ -135,7 +140,6 @@ entry calculate_jacobian [d][k][n]
 -- compiled input @ data/1k/gmm_d20_K25.in.gz
 -- compiled input @ data/1k/gmm_d128_K25.in.gz
 -- compiled input @ data/1k/gmm_d128_K100.in.gz
--- compiled input @ data/1k/gmm_d32_K200.in.gz
 -- compiled input @ data/1k/gmm_d128_K200.in.gz
 -- compiled input @ data/1k/gmm_d10_K100.in.gz
 -- compiled input @ data/1k/gmm_d128_K10.in.gz
@@ -230,7 +234,14 @@ entry calculate_jacobian [d][k][n]
 
 -- ==
 -- entry: calculate_jacobian
--- compiled random input { [200]f32 [200][128]f32 [200][8256]f32 [1024][128]f32 1.0f32 3i64 }
+-- compiled input @ data/1k/gmm_d64_K200.in.gz
+-- compiled input @ data/1k/gmm_d128_K200.in.gz
+-- compiled input @ data/10k/gmm_d32_K200.in.gz
+-- compiled input @ data/10k/gmm_d64_K25.in.gz
+-- compiled input @ data/10k/gmm_d128_K25.in.gz
+-- compiled input @ data/10k/gmm_d128_K200.in.gz
+-- compiled input @ data/2.5M/gmm_d128_K5.in.gz
+-- compiled input @ data/2.5M/gmm_d64_K5.in.gz
 
 -- compiled input @ data/1k/gmm_d2_K10.in.gz
 -- compiled input @ data/1k/gmm_d64_K100.in.gz
