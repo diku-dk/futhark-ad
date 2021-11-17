@@ -75,7 +75,15 @@ def load(filename):
    f = open(filename)
    return futhark_data.load(f)
 
-def test(runs = 5, filenames = ["../adbench/gmm/gmm_d128_K200.txt"]):
+data = [ "../adbench/gmm/data/1k/gmm_d64_K200.txt"
+         ,"../adbench/gmm/data/1k/gmm_d128_K200.txt"
+         ,"../adbench/gmm/data/10k/gmm_d32_K200.txt"
+         ,"../adbench/gmm/data/10k/gmm_d64_K25.txt"
+         ,"../adbench/gmm/data/10k/gmm_d128_K25.txt"
+         ,"../adbench/gmm/data/10k/gmm_d128_K200.txt"
+       ]
+
+def test(runs = 5, filenames = data):
    for filename in filenames:
       g = load(filename)
       gmm = PyTorchGMM()
