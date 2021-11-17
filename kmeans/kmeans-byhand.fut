@@ -1,6 +1,7 @@
 -- ==
 -- input @ data/kdd_cup.in.gz
 -- output @ data/kdd_cup.out
+-- random input { 0i32 1024i64 50i32 [10000][256]f32 }
 
 let euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
   f32.sum (map (\x->x*x) (map2 (-) pt1 pt2))
@@ -39,7 +40,7 @@ let main [n][d]
   let cluster_centres = take k (reverse points)
   let i = 0
   let stop = false
-  let (cluster_centres,i,_stop) =
+  let (cluster_centres,_i,_stop) =
     loop (cluster_centres, i, stop)
     while i < max_iterations && !stop do
       -- For each point, find the cluster with the closest centroid.
