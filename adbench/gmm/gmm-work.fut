@@ -90,7 +90,7 @@ entry calculate_jacobian [d][k][n]
 
 -- ==
 -- entry: calculate_objective
--- compiled random input { [25]f64 [25][128]f64 [25][8256]f64 [10000][128]f64 1f64 3i64 }
+-- compiled random input { [200]f64 [200][128]f64 [200][8256]f64 [10000][128]f64 1f64 3i64 }
 
 
 -- compiled input @ data/1k/gmm_d2_K10.in.gz output @ data/1k/gmm_d2_K10.F
@@ -204,6 +204,8 @@ entry calculate_jacobian [d][k][n]
 
 -- ==
 -- entry: calculate_jacobian
+-- compiled random input { [200]f64 [200][128]f64 [200][8256]f64 [10000][128]f64 1f64 3i64 }
+
 -- compiled random input { [25]f64 [25][128]f64 [25][8256]f64 [10000][128]f64 1f64 3i64 }
 
 -- compiled input @ data/1k/gmm_d2_K10.in.gz output @ data/1k/gmm_d2_K10.J
