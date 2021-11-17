@@ -1,11 +1,6 @@
--- Playing around with defining kmeans clustering with AD.
 -- ==
--- compiled nobench input @ data/trivial.in
--- output @ data/trivial.out
--- compiled nobench input @ data/100.in
--- output @ data/100.out
--- compiled input @ data/204800.in.gz
--- compiled input @ data/kdd_cup.in.gz
+-- input @ data/kdd_cup.in.gz
+-- output @ data/kdd_cup.out
 
 let euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
   f32.sum (map (\x->x*x) (map2 (-) pt1 pt2))
@@ -37,4 +32,4 @@ let main [n][d]
       (map2 euclid_dist_2 new_centres cluster_centres |> f32.sum)
       < tolerance
     in (new_centres, i+1, stop)
-  in (cluster_centres, i)
+  in cluster_centres
