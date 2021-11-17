@@ -38,14 +38,16 @@ class PyTorchGMM(torch.nn.Module):
     def calculate_objective(self, times):
         '''Calculates objective function many times.'''
 
-        self.objective = gmm_objective(*self.inputs, *self.params)
+        for i in range(3):
+          self.objective = gmm_objective(*self.inputs, *self.params)
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
+        torch.cuda.synchronize()
         start.record()
         for i in range(times):
             self.objective = gmm_objective(*self.inputs, *self.params)
-        end.record()
         torch.cuda.synchronize()
+        end.record()
         return start.elapsed_time(end) / times
 
     def calculate_jacobian(self, times):
@@ -57,6 +59,7 @@ class PyTorchGMM(torch.nn.Module):
                   self.inputs,
                   self.params
         )
+        torch.cuda.synchronize()
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
         start.record()
@@ -66,8 +69,8 @@ class PyTorchGMM(torch.nn.Module):
                 self.inputs,
                 self.params
             )
-        end.record()
         torch.cuda.synchronize()
+        end.record()
         return start.elapsed_time(end) / times
 
 def load(filename):
