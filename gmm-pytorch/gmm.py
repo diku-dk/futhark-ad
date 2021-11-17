@@ -42,6 +42,7 @@ class PyTorchGMM(torch.nn.Module):
           self.objective = gmm_objective(*self.inputs, *self.params)
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
+        torch.cuda.synchronize()
         start.record()
         for i in range(times):
             self.objective = gmm_objective(*self.inputs, *self.params)
@@ -58,6 +59,7 @@ class PyTorchGMM(torch.nn.Module):
                   self.inputs,
                   self.params
         )
+        torch.cuda.synchronize()
         start = torch.cuda.Event(enable_timing=True)
         end   = torch.cuda.Event(enable_timing=True)
         start.record()
