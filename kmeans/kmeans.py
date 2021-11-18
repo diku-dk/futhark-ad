@@ -45,7 +45,7 @@ def bench(kmeans_args, times=10):
     return float(timings[1:].mean()), float(timings[1:].std())
 
 
-def data_gen(name, args):
+def data_gen(name):
     # run fuhark datagex kmeans.fut '0' > data/random.in
     assert (data_dir / f'{name}.in').exists()
 
@@ -71,4 +71,4 @@ if __name__ == '__main__':
         assert torch.cuda.is_available(), "Cuda not available"
 
     for name in args.datasets:
-        print('kdd_cup', '±'.join(map(str, bench(data_gen(name, args)))))
+        print('kdd_cup', '±'.join(map(str, bench(data_gen(name)))))
