@@ -44,10 +44,12 @@ def bench(kmeans_args, times=10):
     end = torch.cuda.Event(enable_timing=True)
     timings = torch.zeros((times,), dtype=float)
     for i in range(times):
+        torch.cuda.synchronize()
         start.record()
         kmeans(*kmeans_args)
         torch.cuda.synchronize()
         end.record()
+        torch.cuda.synchronize()
         timings[i] = start.elapsed_time(end) * 1000  # micro seconds
 
     return float(timings[1:].mean()), float(timings[1:].std())
