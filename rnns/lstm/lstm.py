@@ -11,8 +11,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from itertools import chain
 
-torch.set_default_tensor_type(torch.cuda.DoubleTensor)
-torch.set_default_dtype(torch.float64)
+torch.set_default_tensor_type(torch.cuda.FloatTensor)
+torch.set_default_dtype(torch.float32)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
@@ -35,7 +35,6 @@ def equal(m1, m2):
 
 def gen_filename(bs, n, d, h, directory="data", ext=None):
   path = f"{directory}/lstm-bs{bs}-n{n}-d{d}-h{h}"
-
   return path if ext is None else f"{path}.{ext}"
 
 def report_time(model, ft, rt, filename=None):
@@ -51,7 +50,7 @@ def read(filename):
    with open(filename + ".json",'r') as f:
     d = json.load(f)
     for name, p in d.items():
-        d[name] = torch.tensor(p, dtype=torch.float64)
+        d[name] = torch.tensor(p, dtype=torch.float32)
     return d
 
 def gen_data(verbose=True):
@@ -201,6 +200,7 @@ class NaiveLSTM(nn.Module):
           forward_(self, x, h, c)
       torch.cuda.synchronize()
       end.record()
+      torch.cuda.synchronize()
       return start.elapsed_time(end) / runs
 
   def vjp(self, input_, target, runs):
@@ -224,6 +224,7 @@ class NaiveLSTM(nn.Module):
        vjp_(self, input_, target)
     torch.cuda.synchronize()
     end.record()
+    torch.cuda.synchronize()
 
     d = {n: p.grad for n, p in self.named_parameters()}
     self.grads = {  'weight_ih_l0': torch.concat([torch.transpose(g, 0, 1) for g in [d['W_i'], d['W_f'], d['W_j'], d['W_o']]])
@@ -302,7 +303,7 @@ class RNNLSTM(nn.Module):
       else:
         d_futhark[name] = xs
 
-    d_futhark['loss_adj'] = np.float64(1.0)
+    d_futhark['loss_adj'] = np.float32(1.0)
 
     with open(self.filename + ".json",'w') as f:
        json.dump({name: p.tolist() for name, p in d.items()}, f)
@@ -327,7 +328,7 @@ class RNNLSTM(nn.Module):
   def read(self):
     d = json.load(self.filename + ".json",'w')
     for name, p in d.items():
-        d[name] = torch.tensor(p, dtype=torch.float64)
+        d[name] = torch.tensor(p, dtype=torch.float32)
     with torch.no_grad():
       for name, p in chain(self.lstm.named_parameters(), self.linear.named_parameters()):
         p.copy_(d[name])
@@ -349,6 +350,7 @@ class RNNLSTM(nn.Module):
          forward_(self, input_)
       torch.cuda.synchronize()
       end.record()
+      torch.cuda.synchronize()
       return (start.elapsed_time(end) / runs)
 
   def vjp(self, input_, target, runs):
@@ -367,6 +369,7 @@ class RNNLSTM(nn.Module):
        vjp_(self, input_, target)
     torch.cuda.synchronize()
     end.record()
+    torch.cuda.synchronize()
     self.grads = {n: p.grad for n, p in chain(self.lstm.named_parameters(), self.linear.named_parameters())}
     return start.elapsed_time(end) / runs
 
