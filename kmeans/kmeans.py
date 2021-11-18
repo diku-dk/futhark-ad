@@ -19,7 +19,7 @@ def all_pairs_norm(a, b):
 
 def cost(points, centers):
     dists = all_pairs_norm(points, centers)
-    min_dist = torch.take_along_dim(dists, torch.argmin(dists, 0)[None, :], dim=0)
+    (min_dist,_) = torch.min(dists, dim=0)
     return min_dist.sum()
 
 
