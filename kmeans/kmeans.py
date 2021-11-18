@@ -11,7 +11,7 @@ data_dir = Path(__file__).parent / 'data'
 
 
 def cost(points, centers):
-    dists = ((points[None, ...] - centers[:, None, ...]) ** 2).sum(-1)
+    dists = ((points[None, ...] - centers[:, None, ...]) ** 2).sum(-1)  # TODO: rewrite
     min_dist = torch.take_along_dim(dists, torch.argmin(dists, 0)[None, :], dim=0)
     return min_dist.sum()
 
