@@ -60,11 +60,11 @@ if __name__ == '__main__':
         "Newtonian KMeans"
     )
     parser.add_argument("--device", default="cuda", type=str, choices=["cpu", "cuda"])
-    parser.add_argument("--datasets", nargs="+", default=["random", "kdd_cup", ])
+    parser.add_argument("--datasets", nargs="+", default=["kdd_cup", "random"])
 
     args = parser.parse_args()
     if args.device == 'cuda':
         assert torch.cuda.is_available(), "Cuda not available"
 
     for name in args.datasets:
-        print(name, '±'.join(map(str, bench(data_gen(name))), 'micro seconds'))
+        print(name, '±'.join(map(str, bench(data_gen(name)))), 'micro seconds')
