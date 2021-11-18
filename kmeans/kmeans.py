@@ -10,8 +10,15 @@ from torch.autograd.functional import vjp
 data_dir = Path(__file__).parent / 'data'
 
 
+def all_pairs_norm(a, b):
+    a_sqr = (a ** 2).sum(1)[None, :]
+    b_sqr = (b ** 2).sum(1)[:, None]
+    diff = torch.matmul(b, a.T)
+    return a_sqr + b_sqr - 2 * diff
+
+
 def cost(points, centers):
-    dists = ((points[None, ...] - centers[:, None, ...]) ** 2).sum(-1)  # TODO: rewrite
+    dists = all_pairs_norm(points, centers)
     min_dist = torch.take_along_dim(dists, torch.argmin(dists, 0)[None, :], dim=0)
     return min_dist.sum()
 
