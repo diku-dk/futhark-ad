@@ -9,12 +9,11 @@ let euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
 let closest_point (p1: (i32,f32)) (p2: (i32,f32)): (i32,f32) =
   if p1.1 < p2.1 then p1 else p2
 
-
 let find_nearest_point [k][d] (pts: [k][d]f32) (pt: [d]f32): i32 =
-  let (i, _) = foldl (\acc (i, p) -> closest_point acc (i32.i64 i, euclid_dist_2 pt p))
-                     (0, f32.inf)
-                     (zip (indices pts) pts)
-  in i
+  map (euclid_dist_2 pt) pts
+  |> zip (map i32.i64 (indices pts))
+  |> reduce closest_point (0, f32.inf)
+  |> (.0)
 
 let add_centroids [d] (x: [d]f32) (y: [d]f32): *[d]f32 =
   map2 (+) x y
@@ -44,7 +43,7 @@ let main [n][d]
     loop (cluster_centres, i, stop)
     while i < max_iterations && !stop do
       -- For each point, find the cluster with the closest centroid.
-      let new_membership = map (find_nearest_point cluster_centres) points
+      let new_membership = opaque (map (find_nearest_point cluster_centres) points)
       -- Then, find the new centres of the clusters.
       let new_centres = centroids_of k points new_membership
       let stop =
