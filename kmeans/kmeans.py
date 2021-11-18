@@ -46,12 +46,13 @@ def bench(kmeans_args, times=10):
 
 
 def data_gen(name):
-    # run fuhark datagex kmeans.fut '0' > data/random.in
-    assert (data_dir / f'{name}.in').exists()
+    # run futhark dataget kmeans.fut '0' > data/random.in
+    data_file = data_dir / f'{name}.in'
+    assert data_file.exists()
 
-    with (data_dir / f'{name}.in').open('rb') as f:
+    with data_file.open('rb') as f:
         kmeans_args = tuple(futhark_data.load(f))
-    return map(partial(torch.tensor, device=args.device, dtype=torch.float32), kmeans_args)
+    return tuple(map(partial(torch.tensor, device=args.device, dtype=torch.float32), kmeans_args))
 
 
 if __name__ == '__main__':
@@ -59,16 +60,11 @@ if __name__ == '__main__':
         "Newtonian KMeans"
     )
     parser.add_argument("--device", default="cuda", type=str, choices=["cpu", "cuda"])
-    parser.add_argument("--datasets", nargs="+", default=["kdd_cup", "random"])
-    # parser.add_argument("--tolerance", type=int, default=0)
-    # parser.add_argument("--k", type=int, default=50)
-    # parser.add_argument("--n-datapoints", type=int, default=10_000)
-    # parser.add_argument("--n-features", type=int, default=256)
-    # parser.add_argument("--max-iter", type=int, default=1024)
+    parser.add_argument("--datasets", nargs="+", default=["random", "kdd_cup", ])
 
     args = parser.parse_args()
     if args.device == 'cuda':
         assert torch.cuda.is_available(), "Cuda not available"
 
     for name in args.datasets:
-        print('kdd_cup', '±'.join(map(str, bench(data_gen(name)))))
+        print(name, '±'.join(map(str, bench(data_gen(name))), 'micro seconds'))
