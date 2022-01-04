@@ -8,11 +8,14 @@ from torch.autograd.functional import vjp
 
 data_dir = Path(__file__).parent / "data"
 
+VERBOSE = True
 
 def all_pairs_norm(a, b):
     a_sqr = torch.sparse.sum(a ** 2, 1).to_dense()[None, :]
     b_sqr = torch.sum(b ** 2, 1)[:, None]
     diff = torch.sparse.mm(a, b.T).T
+    if VERBOSE:
+        print('entries', diff.numel(), 'zeros',diff.numel() - torch.count_nonzero(diff))
     return a_sqr + b_sqr - 2 * diff
 
 
