@@ -8,7 +8,7 @@ from torch.autograd.functional import vjp
 
 data_dir = Path(__file__).parent / "data"
 
-VERBOSE = True
+VERBOSE = False
 
 def all_pairs_norm(a, b):
     a_sqr = torch.sparse.sum(a ** 2, 1).to_dense()[None, :]
@@ -28,7 +28,6 @@ def cost(points, centers):
 def kmeans(max_iter, clusters, features, tolerance=1):
     t = 0
     converged = False
-    clusters = clusters.to_dense()
     hes_v = torch.ones_like(clusters)
     while not converged and t < max_iter:
         _, jac = vjp(partial(cost, features), clusters, v=torch.tensor(1.0))
@@ -66,9 +65,7 @@ def get_clusters(k, pointers, indices, values, num_col):
             requires_grad=True,
             dtype=torch.float32,
             size=(k, num_col),
-        )
-        .to_dense()
-        .to_sparse()
+        ).to_dense()
     )
     return sp_clusters
 
@@ -83,4 +80,6 @@ if __name__ == "__main__":
 
     sp_clusters = get_clusters(k, *sp_data, sp_features.size()[1])
 
-    kmeans(2, sp_clusters, sp_features)
+    print(kmeans(2, sp_clusters, sp_features))
+
+
