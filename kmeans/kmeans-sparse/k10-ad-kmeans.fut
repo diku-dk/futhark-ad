@@ -1,0 +1,28 @@
+-- Manual version of sparse-kmeans for k=10
+-- ==
+-- compiled input @ data/movielens.in.gz
+
+-- compiled input @ data/nytimes.in.gz
+-- compiled input @ data/scrna.in.gz
+
+-- compiled nobench input @ data/scrna.in.gz
+-- output @ data/movielens.out
+
+import "kmeans-sp-ad"
+
+
+let main [nnz][np1] 
+         (values: [nnz]f32)
+         (indices_data: [nnz]i64) 
+         (pointers: [np1]i64) =
+  let fix_iter = false
+  let threshold = 0.005f32
+  let max_iterations = 250i32 --500i32
+  let k = 10i64
+
+  in kmeansSpAD k threshold max_iterations fix_iter
+                values
+                indices_data
+                pointers
+
+
