@@ -95,7 +95,7 @@ def get_clusters(k, pointers, indices, values, num_col):
 
 if __name__ == "__main__":
     k = 10
-    max_iter = 1000
+    max_iter = 25
     threshold = 5e-3
 
     for dataset in ['movielens', 'nytimes', 'scrna']:
