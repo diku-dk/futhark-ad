@@ -187,6 +187,9 @@ entry rev_J [bs][n][d][h][hx4]
 -- compiled input @ data/lstm-bs3-n20-d300-h192.in output @ data/lstm-bs3-n20-d300-h192.out
 -- compiled input @ data/lstm-bs1024-n300-d80-h256.in output @ data/lstm-bs1024-n300-d80-h256.out
 
+-- compiled random input { [300][1024][80]f32 [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [1024]f32 [256][80]f32 [80]f32 f32 }
+
+
 -- ==
 -- entry: rev_J
 -- compiled input @ data/lstm-bs2-n3-d4-h3.in output @ data/lstm-bs2-n3-d4-h3.J
@@ -194,3 +197,6 @@ entry rev_J [bs][n][d][h][hx4]
 -- compiled input @ data/lstm-bs10-n100-d50-h20.in output @ data/lstm-bs10-n100-d50-h20.J
 -- compiled input @ data/lstm-bs3-n20-d300-h192.in output @ data/lstm-bs3-n20-d300-h192.J
 -- compiled input @ data/lstm-bs1024-n300-d80-h256.in
+
+-- compiled random input { [300][1024][80]f32 [300][1024][80]f32 [256][1024]f32 [256][1024]f32 [1024][80]f32 [1024][256]f32 [1024]f32 [1024]f32 [256][80]f32 [80]f32 f32 }
+
