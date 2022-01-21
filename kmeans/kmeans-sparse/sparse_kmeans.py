@@ -1,3 +1,4 @@
+import gzip
 from functools import partial
 from pathlib import Path
 
@@ -10,12 +11,13 @@ data_dir = Path(__file__).parent / "data"
 
 VERBOSE = False
 
+
 def all_pairs_norm(a, b):
     a_sqr = torch.sparse.sum(a ** 2, 1).to_dense()[None, :]
     b_sqr = torch.sum(b ** 2, 1)[:, None]
     diff = torch.sparse.mm(a, b.T).T
     if VERBOSE:
-        print('entries', diff.numel(), 'zeros',diff.numel() - torch.count_nonzero(diff))
+        print('entries', diff.numel(), 'zeros', diff.numel() - torch.count_nonzero(diff))
     return a_sqr + b_sqr - 2 * diff
 
 
@@ -42,10 +44,10 @@ def kmeans(max_iter, clusters, features, tolerance=1):
 
 def data_gen(name):
     """Dataformat CSR  (https://en.wikipedia.org/wiki/Sparse_matrix)"""
-    data_file = data_dir / f"{name}.in"
+    data_file = data_dir / f"{name}.in.gz"
     assert data_file.exists()
 
-    with data_file.open("rb") as f:
+    with gzip.open(data_file.resolve(), ("rb")) as f:
         values, indices, pointers = tuple(futhark_data.load(f))
 
     return (
@@ -53,6 +55,27 @@ def data_gen(name):
         torch.tensor(indices, dtype=torch.int32),
         values,
     )
+
+
+def bench_gpu(dataset, k=10, max_iter=1000, times=10):
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    timings = torch.zeros((times,), dtype=float)
+    sp_data = data_gen(dataset)
+    sp_features = (
+        torch.sparse_csr_tensor(*sp_data, dtype=torch.float32).to_dense().to_sparse()
+    )
+    sp_clusters = get_clusters(k, *sp_data, sp_features.size()[1])
+    for i in range(times):
+        torch.cuda.synchronize()
+        start.record()
+        kmeans(max_iter, sp_clusters, sp_features, threshold)
+        torch.cuda.synchronize()
+        end.record()
+        torch.cuda.synchronize()
+        timings[i] = start.elapsed_time(end) * 1000  # micro seconds
+
+    return float(timings[1:].mean()), float(timings[1:].std())
 
 
 def get_clusters(k, pointers, indices, values, num_col):
@@ -71,15 +94,9 @@ def get_clusters(k, pointers, indices, values, num_col):
 
 
 if __name__ == "__main__":
-    k = 5
-    sp_data = data_gen("movielens")
+    k = 10
+    max_iter = 1000
+    threshold = 5e-3
 
-    sp_features = (
-        torch.sparse_csr_tensor(*sp_data, dtype=torch.float32).to_dense().to_sparse()
-    )
-
-    sp_clusters = get_clusters(k, *sp_data, sp_features.size()[1])
-
-    print(kmeans(2, sp_clusters, sp_features))
-
-
+    for dataset in ['movielens', 'nytimes', 'scrna']:
+        print(dataset, f'{bench_gpu(dataset)} micro seconds')
