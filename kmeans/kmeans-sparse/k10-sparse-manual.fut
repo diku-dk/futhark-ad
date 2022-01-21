@@ -17,11 +17,11 @@ let main [nnz][np1]
 
   let fix_iter = false
   let threshold = 0.005f32
-  let max_iterations = 250i64 --500i64
+  let num_iterations = 10 --250i64
   let k = 10i64
 
   let (delta, i, cluster_centers) =
-    kmeans_seq_rows fix_iter threshold max_iterations k
+    kmeans_seq_rows fix_iter threshold num_iterations k
                     values indices_data pointers
 
   in  (cluster_centers[0,:33], delta, i)

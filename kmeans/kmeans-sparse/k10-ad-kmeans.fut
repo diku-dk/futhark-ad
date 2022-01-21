@@ -2,7 +2,6 @@
 -- ==
 -- compiled input @ data/movielens.in.gz
 -- compiled input @ data/nytimes.in.gz
-
 -- compiled input @ data/scrna.in.gz
 
 -- compiled nobench input @ data/scrna.in.gz
@@ -17,11 +16,11 @@ let main [nnz][np1]
          (pointers: [np1]i64) =
   let fix_iter = false
   let threshold = 0.005f32
-  let max_iterations = 250i32 --500i32
+  let num_iterations = 10i32 --250i32
   let k = 10i64
 
   let (cluster_centers, num_its) =
-      kmeansSpAD k threshold max_iterations fix_iter
+      kmeansSpAD k threshold num_iterations fix_iter
                  values
                  indices_data
                  pointers

@@ -1,8 +1,5 @@
 import "utils"
 
--- ToDo: I am currently trying to get from Till the four real-world
---       sparse datasets: BBC, movielens, NY Times, SCRNA. 
-
 let closest_point (p1: (i64,f32)) (p2: (i64,f32)): (i64,f32) =
   if p1.1 < p2.1 then p1 else p2
 
@@ -29,7 +26,7 @@ let initCenters [nnz][np1]
   in  cluster_centers
 
 let kmeans_seq_rows [nnz][np1]
-        (fix_iter: bool) (threshold: f32) (max_iterations: i64) (k: i64)
+        (_fix_iter: bool) (threshold: f32) (num_iterations: i64) (k: i64)
         (values: [nnz]f32) (indices_data: [nnz]i64) 
         (pointers: [np1]i64) =
 
@@ -46,15 +43,12 @@ let kmeans_seq_rows [nnz][np1]
     let cluster_centers =
       initCenters k columns pointers row_indices values indices_data
 
-    -- Also assign points arbitrarily to clusters.
-    let membership = map (%k) (iota n)
-    let delta = threshold + 1
-    -- let max_iterations = 1
-    let i = 0
-
     let (_new_membership,cluster_centers,delta,i) =
-        loop (membership, cluster_centers, delta, i)
-        while (if fix_iter then true else delta > threshold) && i < max_iterations do
+        -- ALWAYS EXECUTE num_iterations
+        loop (membership, cluster_centers, _delta, i) =
+             (map (%k) (iota n), cluster_centers, threshold + 1, 0)
+        while i < num_iterations do
+--        while (if fix_iter then true else delta > threshold) && i < num_iterations do
             -- For each point, find the cluster with the closest centroid.
             -- prepare sum of squares because we'll only have slight deviationsssss
             -- we assume that most differences are 0 and correct the mistakes as we go

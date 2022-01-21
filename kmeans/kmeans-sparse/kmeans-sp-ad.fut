@@ -64,9 +64,9 @@ let tolerance = 1 : f32
 
 let kmeansSpAD [nnz][np1]
         (k: i64)
-        (threshold: f32)
-        (max_iterations: i32)
-        (fix_iter: bool)
+        (_threshold: f32)
+        (num_iterations: i32)
+        (_fix_iter: bool)
         (values: [nnz]f32)
         (indices_data: [nnz]i64) 
         (pointers: [np1]i64) =
@@ -87,8 +87,9 @@ let kmeansSpAD [nnz][np1]
   let i = 0
   let stop = false
   let (cluster_centers, i, _stop) =
+    -- ALWAYS EXECUTE num_iterations
     loop (cluster_centers : [k][columns]f32, i, stop)
-      while i < max_iterations && !stop do
+      while i < num_iterations && !stop do
         let (cost', cost'') =
           jvp2  (\x -> vjp (costSparse values indices_data pointers) x 1)
                 cluster_centers
@@ -96,8 +97,8 @@ let kmeansSpAD [nnz][np1]
         -- let x = map2 (map2 (/)) cost' cost''
         let x = map2 (map2 (\ c' c'' -> 1.0 * c' / c'' )) cost' cost''
         let new_centers = map2 (map2 (-)) cluster_centers x
-        let stop =
-          (map2 euclid_dist_2 new_centers cluster_centers |> f32.sum)
-          < tolerance
+--        let stop =
+--          (map2 euclid_dist_2 new_centers cluster_centers |> f32.sum)
+--          < tolerance
         in (new_centers, i+1, stop)
   in (cluster_centers, i)
