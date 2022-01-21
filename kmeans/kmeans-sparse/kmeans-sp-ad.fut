@@ -36,20 +36,16 @@ let costSparse [nnz][np1][cols][k]
   -- partial_distss : [n][k]f32
   let partial_distss =
     map (\row -> 
-          map (\cluster->     
+          map (\cl_ind ->
                 let index_start = begrows[row]
-                let nnz = begrows[row+1] - index_start 
-                let j = 0
-                let correction = 0  
-                let (correction, _) = 
-                  loop (correction, j) while j < nnz do
+                let nnz = begrows[row+1] - index_start
+                in  loop (correction) = (0) for j < nnz do
                       let element_value = values[index_start+j]
                       let column = colidxs[index_start+j]
-                      let cluster_value = cluster[column]
+                      let cluster_value = cluster_centers[cl_ind, column]
                       let value = (element_value - 2 * cluster_value)*element_value
-                      in  (correction+value, j+1)
-                in correction
-              ) cluster_centers
+                      in  correction+value
+              ) (iota k)
         ) (iota n)
     |> opaque
 
@@ -90,14 +86,15 @@ let kmeansSpAD [nnz][np1]
 
   let i = 0
   let stop = false
-  let (cluster_centers, i,_stop) =
+  let (cluster_centers, i, _stop) =
     loop (cluster_centers : [k][columns]f32, i, stop)
       while i < max_iterations && !stop do
         let (cost', cost'') =
           jvp2  (\x -> vjp (costSparse values indices_data pointers) x 1)
                 cluster_centers
                 (replicate k (replicate columns 1))
-        let x = map2 (map2 (/)) cost' cost''
+        -- let x = map2 (map2 (/)) cost' cost''
+        let x = map2 (map2 (\ c' c'' -> 1.0 * c' / c'' )) cost' cost''
         let new_centers = map2 (map2 (-)) cluster_centers x
         let stop =
           (map2 euclid_dist_2 new_centers cluster_centers |> f32.sum)
