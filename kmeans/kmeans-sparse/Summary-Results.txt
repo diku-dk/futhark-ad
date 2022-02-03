@@ -23,7 +23,31 @@ slowdown    2.49x      3.62x    3.71x
 
 
 ---------------------------------
---- RTX2080Ti Results 25 runs ---
+--- RTX2080Ti Results 10 runs ---
 ---------------------------------
 
+k10-manual.fut (using k10-manual.fut.tuning):
+data/movielens-cpy.in:      88070μs (RSD: 0.077; min:  -4%; max: +16%)
+data/nytimes-cpy.in:       180806μs (RSD: 0.001; min:  -0%; max:  +0%)
+data/scrna-cpy.in:         227881μs (RSD: 0.002; min:  -0%; max:  +0%)
+
+k10-ad.fut (using k10-ad.fut.tuning):
+data/movielens-cpy.in:     190933μs (RSD: 0.046; min:  -5%; max: +10%)
+data/nytimes-cpy.in:      1754301μs (RSD: 0.076; min: -16%; max:  +6%)
+data/scrna-cpy.in:         657472μs (RSD: 0.004; min:  -1%; max:  +1%)
+
+
+Time μs/   movielens  nytimes  scrna
+Speedup
+-------------------------------------
+k10-manual  88070     180806   227881
+k10-ad     190933    1754301   657472
+slowdown    2.17x      9.70x    2.89x
+
+
+PyTorch-AD on RTX6000
+
+movielens  65846031 microseconds   ~344x
+nytimes   270351937 microseconds   ~154x
+scrna     405717250 microseconds   ~617x
 
