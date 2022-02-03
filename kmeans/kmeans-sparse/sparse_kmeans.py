@@ -6,6 +6,8 @@ import futhark_data
 import torch
 from torch.autograd.functional import vhp
 from torch.autograd.functional import vjp
+from scipy.sparse import csr_matrix
+import numpy as np
 
 data_dir = Path(__file__).parent / "data"
 
@@ -31,7 +33,7 @@ def kmeans(max_iter, clusters, features, tolerance=1):
     t = 0
     converged = False
     hes_v = torch.ones_like(clusters)
-    while not converged and t < max_iter:
+    while t < max_iter and not converged:
         _, jac = vjp(partial(cost, features), clusters, v=torch.tensor(1.0))
         _, hes = vhp(partial(cost, features), clusters, v=hes_v)
 
@@ -51,20 +53,27 @@ def data_gen(name):
         values, indices, pointers = tuple(futhark_data.load(f))
 
     return (
-        torch.tensor(pointers, dtype=torch.int32),
-        torch.tensor(indices, dtype=torch.int32),
         values,
+        torch.tensor(indices, dtype=torch.int32),
+        torch.tensor(pointers, dtype=torch.int32),
     )
 
 
-def bench_gpu(dataset, k=10, max_iter=1000, times=10):
+def bench_gpu(dataset, k=10, max_iter=10, times=10):
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
     timings = torch.zeros((times,), dtype=float)
     sp_data = data_gen(dataset)
-    sp_features = (
-        torch.sparse_csr_tensor(*sp_data, dtype=torch.float32).to_dense().to_sparse()
-    )
+
+    coo = csr_matrix(sp_data).tocoo()
+    values = coo.data
+    indices = np.vstack((coo.row, coo.col))
+
+    i = torch.LongTensor(indices)
+    v = torch.FloatTensor(values)
+    shape = coo.shape
+
+    sp_features = torch.sparse.FloatTensor(i, v, torch.Size(shape))
     sp_clusters = get_clusters(k, *sp_data, sp_features.size()[1])
     for i in range(times):
         torch.cuda.synchronize()
@@ -78,7 +87,7 @@ def bench_gpu(dataset, k=10, max_iter=1000, times=10):
     return float(timings[1:].mean()), float(timings[1:].std())
 
 
-def get_clusters(k, pointers, indices, values, num_col):
+def get_clusters(k, values, indices, pointers, num_col):
     end = pointers[k]
     sp_clusters = (
         torch.sparse_csr_tensor(
@@ -99,4 +108,4 @@ if __name__ == "__main__":
     threshold = 5e-3
 
     for dataset in ['movielens', 'nytimes', 'scrna']:
-        print(dataset, f'{bench_gpu(dataset)} micro seconds')
+        print(dataset, f'{bench_gpu(dataset, max_iter=max_iter)} micro seconds')
