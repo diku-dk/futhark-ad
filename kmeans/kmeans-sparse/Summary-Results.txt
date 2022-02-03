@@ -1,0 +1,29 @@
+----------------------------
+--- A100 Results 25 runs ---
+----------------------------
+
+k10-manual.fut (using k10-manual.fut.tuning):
+data/movielens.in:      61044μs (RSD: 0.050; min:  -3%; max: +22%)
+data/nytimes.in:        82966μs (RSD: 0.050; min:  -1%; max: +25%)
+data/scrna.in:         155971μs (RSD: 0.016; min:  -1%; max:  +8%)
+
+
+k10-ad.fut (using k10-ad.fut.tuning):
+data/movielens.in:     152234μs (RSD: 0.014; min:  -3%; max:  +2%)
+data/nytimes.in:       300388μs (RSD: 0.021; min:  -4%; max:  +4%)
+data/scrna.in:         578560μs (RSD: 0.008; min:  -2%; max:  +2%)
+
+
+Time μs/   movielens  nytimes  scrna
+Speedup
+-------------------------------------
+k10-manual  61044      82966   155971
+k10-ad     152234     300388   578560
+slowdown    2.49x      3.62x    3.71x
+
+
+---------------------------------
+--- RTX2080Ti Results 25 runs ---
+---------------------------------
+
+
