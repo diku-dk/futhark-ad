@@ -1,9 +1,9 @@
 -- type real "parametrization"
-type real = f64
-let zero = 0f64
-let sum  = f64.sum
-let grav = 9.81f64 -- is BigFloat double?
-let gdm1 = 0.4f64  -- is BigFloat double?
+type real = f32
+let zero = 0f32
+let sum  = f32.sum
+let grav = 9.81f32 -- is BigFloat double?
+let gdm1 = 0.4f32  -- is BigFloat double?
 
 -- helpers
 let imap  as f = map f as
@@ -34,6 +34,7 @@ let unzip16 as =
 -- these are their default values,
 -- unsure if this is what gets run
 let N = 4i32
+let Nq= 5i64
 let nmoist = 0i64
 let ntrace = 0i64
 
@@ -79,17 +80,18 @@ let volumerhs [Nq][nelem]
   -- e = blockIdx().x, j = threadIdx().y, i = threadIdx().x
 
   let rhs' =
-    imap (iota nelem)
-         (\ e -> -- Cuda block level
+    iota nelem |>
+    #[incremental_flattening(only_intra)]
+    map (\ e -> -- Cuda block level
            let (r_rhsps, r_rhsUs, r_rhsVs, r_rhsWs, r_rhsEs) =
             tabulate_2d Nq Nq
               (\_j _i ->
                 ( -- this should be sequentialized
-                  replicate Nq zero
-                , replicate Nq zero
-                , replicate Nq zero
-                , replicate Nq zero
-                , replicate Nq zero
+                  #[sequential] replicate Nq zero
+                , #[sequential] replicate Nq zero
+                , #[sequential] replicate Nq zero
+                , #[sequential] replicate Nq zero
+                , #[sequential] replicate Nq zero
                 )
               ) |> map unzip5 |> unzip5
 
@@ -205,15 +207,16 @@ let volumerhs [Nq][nelem]
                   let helperInner s_F_s s_G_s r_H r_rhs_s ctv =
                     -- all parallelism should be sequentialized in here!
                     let r_rhs_k =
-                             imap4 s_Di s_Dj s_F_s[j, :] s_G_s[:, i]
-                                   (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)
-                          |> sum
+                             #[sequential]
+                             map4 (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)
+                                  s_Di s_Dj s_F_s[j, :] s_G_s[:, i]
+                          |> #[sequential] sum
                     let r_rhs_k' = r_rhs_k + ctv
-                    in  imap2 (iota Nq) r_rhs_s
-                              (\ ind r_rhs_el ->
+                    in  #[sequential]
+                        map2  (\ ind r_rhs_el ->
                                   r_rhs_el + (r_H * s_D[ind,k]) +
                                   if ind == k then r_rhs_k' else zero
-                              )
+                              ) (iota Nq) r_rhs_s
 
                   let r_rhsp' = helperInner s_F_ps s_G_ps r_Hps[i,j] r_rhsps[i,j] zero
                   let r_rhsU' = helperInner s_F_Us s_G_Us r_HUs[i,j] r_rhsUs[i,j] zero
@@ -222,43 +225,6 @@ let volumerhs [Nq][nelem]
                   let r_rhsW' = helperInner s_F_Ws s_G_Ws r_HWs[i,j] r_rhsWs[i,j] (- MJ_p_grav)
                   in  (r_rhsp', r_rhsU', r_rhsV', r_rhsW', r_rhsE')
                 )
-
---              -- third intra-parallel computation
---              -- (switched over from Enzyme code)
---              let (r_rhsp_k, r_rhsU_k, r_rhsV_k, r_rhsE_k, r_rhsW_k) =
---                unzip5 <| map unzip5 <|
---                tabulate_2d Nq Nq (\j i ->
---                  let MJ_p_grav = MJ_p_gravs[j, i]
---                  let (s_Di, s_Dj) = (s_D[i, :], s_D[j, :])
---                  in
---                  -- everything in here should be sequentialized
---                  ( imap4 s_Di s_Dj s_F_ps[j, :] s_G_ps[:, i]
---                          (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)   |> sum
---                  , imap4 s_Di s_Dj s_F_Us[j, :] s_G_Us[:, i]
---                          (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)   |> sum
---                  , imap4 s_Di s_Dj s_F_Vs[j, :] s_G_Vs[:, i]
---                          (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)   |> sum
---                  , imap4 s_Di s_Dj s_F_Es[j, :] s_G_Es[:, i]
---                          (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)   |> sum
---                  , (imap4 s_Di s_Dj s_F_Ws[j, :] s_G_Ws[:, i]
---                          (\ Dni Dnj Fj Gi -> Dni * Fj + Dnj * Gi)   |> sum)
---                    - MJ_p_grav
---                  )
---                )
---
---              -- second intra-parallel computation
---              -- all parallelism in "f" and "g" should be sequentialized!
---              let f a bs v_k =
---                  map  (*a) s_D[:,k] |>
---                  map3 (\ ind b p -> b + p + if ind == k then v_k else zero)
---                       (iota Nq) bs
---
---              -- hopefully all these below are fused!
---              let r_rhsps = imap3 r_Hps r_rhsps r_rhsp_k (map3 f)
---              let r_rhsUs = imap3 r_HUs r_rhsUs r_rhsU_k (map3 f)
---              let r_rhsVs = imap3 r_HVs r_rhsVs r_rhsV_k (map3 f)
---              let r_rhsWs = imap3 r_HWs r_rhsWs r_rhsW_k (map3 f)
---              let r_rhsEs = imap3 r_HEs r_rhsEs r_rhsE_k (map3 f)
 
               in  (r_rhsps', r_rhsUs', r_rhsVs', r_rhsWs', r_rhsEs')
            -- end loop k < Nq
@@ -269,7 +235,8 @@ let volumerhs [Nq][nelem]
                   tabulate_2d Nq Nq
                               (\ j i -> -- inner parallelism sequentialize
                                         let h rg mji rh = rh + mji * rg
-                                        in  map3 h r_rhs_r[j, i] mgiss[j, i, :] rhs[e, d_i, :, j, i]
+                                        in  #[sequential]
+                                            map3 h r_rhs_r[j, i] mgiss[j, i, :] rhs[e, d_i, :, j, i]
                               )
            in  [ h_lift r_rhsps d_p
                , h_lift r_rhsUs d_U
@@ -277,31 +244,23 @@ let volumerhs [Nq][nelem]
                , h_lift r_rhsWs d_W
                , h_lift r_rhsEs d_E
                ]
---           in  tabulate_2d Nq Nq
---                (\j i -> 
---                    let mgis = vgeo[e, d_MJI, :, j, i]
---                    in  [ map3 h r_rhsps[j, i] mgis rhs[e, d_p, :, j, i]
---                        , map3 h r_rhsUs[j, i] mgis rhs[e, d_U, :, j, i]
---                        , map3 h r_rhsVs[j, i] mgis rhs[e, d_V, :, j, i]
---                        , map3 h r_rhsWs[j, i] mgis rhs[e, d_W, :, j, i]
---                        , map3 h r_rhsEs[j, i] mgis rhs[e, d_E, :, j, i]
---                        ]
---                )
     )
   in rhs'
 
+-- ==
+-- random input { [20000][5][5][5][5]f32 [20000][5][5][5][5]f32 [20000][14][5][5][5]f32 [5][5]f32}
 
-entry objfun [Nq][nelem]
+entry objfun [nelem]
         ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
         ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
         ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
         ( D:    [Nq][Nq]real ) = 
   volumerhs grav rhs (Q, vgeo, D)
 
-entry revdiff [Nq][nelem]
-        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
-        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
-        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
-        ( D:    [Nq][Nq]real )
-        ( rhs_: [nelem][5][Nq][Nq][Nq]real ) =
-  vjp (volumerhs grav rhs) (Q, vgeo, D) rhs_
+--entry revdiff [Nq][nelem]
+--        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
+--        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
+--        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
+--        ( D:    [Nq][Nq]real )
+--        ( rhs_: [nelem][5][Nq][Nq][Nq]real ) =
+--  vjp (volumerhs grav rhs) (Q, vgeo, D) rhs_
