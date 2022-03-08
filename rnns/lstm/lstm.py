@@ -16,13 +16,9 @@ torch.set_default_dtype(torch.float32)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
-# bs, n, d, h
-parameters = [
-            # (2, 3, 4, 3)
-            #, (3, 5, 10, 5)
-            #, (10, 100, 50, 20)
-              (1024, 20, 300, 192)
-            #(1024, 300, 80, 256)
+               #( bs,    n,   d,   h)
+parameters = [  (1024,  20, 300, 192) # D0
+               ,(1024, 300,  80, 256) # D1
              ]
 
 def equal(m1, m2):
@@ -89,7 +85,7 @@ def test(mkdata=False, verbose=False, runs=1):
           print()
 
     report_time("naive        ", ft_naive, rt_naive, filename)
-    #report_time("torch.nn.LSTM", ft_model, rt_model, filename)
+    report_time("torch.nn.LSTM", ft_model, rt_model, filename)
     print()
 
 class NaiveLSTM(nn.Module):
@@ -315,8 +311,7 @@ class RNNLSTM(nn.Module):
   def dump_output(self):
     if not os.path.exists(os.path.dirname(self.filename)):
       os.makedirs(os.path.dirname(self.filename))
-    with open(self.filename + ".out",'wb') as f:
-      #futhark_data.dump(self.output.cpu().detach().numpy().reshape(self.bs*self.n, -1),f, True)
+    with open(self.filename + ".F",'wb') as f:
       futhark_data.dump(self.loss.cpu().detach().numpy(),f, True)
     with open(self.filename + ".J",'wb') as f:
       for n, g in self.grads.items():
