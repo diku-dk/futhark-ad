@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 # first, define our model and initialize the learnable weights and biases (parameters):
 class LSTM(nn.Module):
     def __init__(self, dims, hidden_dims, learn_h0=False, learn_c0=False,
