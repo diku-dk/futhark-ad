@@ -17,7 +17,7 @@ def _lstm_cell(state, weights: LSTM_WEIGHTS, input):
     g = tanh(jnp.matmul(input, weights.w_ig) + jnp.matmul(c, weights.w_hg) + weights.bg)
     c = f * c + i * g
     h = o * tanh(c)
-    return (h, c), h
+    return jnp.stack((h, c), 1), h
 
 
 def _init_lstm_weights(rng_key, in_dim, hid_dim):
@@ -32,8 +32,8 @@ def rnn(hid_dim=5, num_layers=2):
     def init(rng_seed, in_dim):
         weight_key, state_key = split(rng_seed)
         keys = split(weight_key, num_layers)
-        weights = [_init_lstm_weights(keys[0], in_dim, hid_dim)] + [_init_lstm_weights(keys[i], hid_dim, hid_dim) for i in
-                                                                    range(1, num_layers)]
+        weights = [_init_lstm_weights(keys[0], in_dim, hid_dim)] + [_init_lstm_weights(keys[i], hid_dim, hid_dim) for i
+                                                                    in range(1, num_layers)]
         # Note: init_state[:, 0] = hs, init_state[:, 1] = cs
         init_state = normal(state_key, (num_layers, 2, hid_dim))
         return init_state, weights
@@ -46,7 +46,7 @@ def rnn(hid_dim=5, num_layers=2):
             new_state, h = _lstm_cell(states[i], weights[i], h)
             out_state.append(new_state)
 
-        return (tuple(out_state), weights), h
+        return (jnp.stack(out_state), weights), h
 
     def run(x, init_state, weights):
         return scan(_cell, (init_state, weights), x)
