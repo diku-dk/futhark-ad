@@ -9,18 +9,7 @@ LSTM_WEIGHTS = namedtuple('LSTM_WEIGHTS', ('w_ii', 'w_hi', 'w_if', 'w_ig', 'w_hf
                                            'bi', 'bf', 'bg', 'bo'))
 
 
-def lstm_cell(input, state, weights: LSTM_WEIGHTS):
-    h, c = state
-    i = sigmoid(jnp.matmul(weights.w_ii, input) + jnp.matmul(weights.w_hi @ state + weights.bi))
-    f = sigmoid(jnp.matmul(weights.w_if, input) + jnp.matmul(weights.w_hf @ state + weights.bf))
-    o = sigmoid(jnp.matmul(weights.w_io, input) + jnp.matmul(weights.w_ho @ state + weights.bo))
-    g = tanh(jnp.matmul(weights.w_ig, input) + jnp.matmul(weights.w_hg @ state + weights.bg))
-    c = f * c + i * g
-    h = o * tanh(c)
-    return h, c
-
-
-def init_lstm_cell(rng_key, in_dim, hid_dim):
+def init_lstm_weights(rng_key, in_dim, hid_dim):
     in_key, hid_key = split(rng_key)
     in_weights = normal(in_key, (4, in_dim, hid_dim))
     hid_weights = normal(in_key, (4, hid_dim, hid_dim))
@@ -28,20 +17,52 @@ def init_lstm_cell(rng_key, in_dim, hid_dim):
     return LSTM_WEIGHTS(*in_weights, *hid_weights, *bias)
 
 
-def rnn(hid_dim=5, num_layers=2, activation=lambda x: x):
-    def init(in_dim):
-        weights = [] + [range(1, num_layers)]
-        return None
+def rnn(hid_dim=5, num_layers=2):
+    def init(rng_seed, in_dim):
+        weight_key, state_key = split(rng_seed)
+        keys = split(weight_key, num_layers)
+        weights = [init_lstm_weights(keys[0], in_dim, hid_dim)] + [init_lstm_weights(keys[i], hid_dim, hid_dim) for i in
+                                                                   range(1, num_layers)]
+        # Note: init_state[:, 0] = hs, init_state[:, 1] = cs
+        init_state = normal(state_key, (num_layers, 2, hid_dim))
+        return init_state, weights
 
-    def _cell():
-        pass
+    def _cell(carry, x):
+        def lstm_cell(state, weights: LSTM_WEIGHTS, input):
+            h, c = state
+            i = sigmoid(jnp.matmul(input, weights.w_ii) + jnp.matmul(h, weights.w_hi) + weights.bi)
+            f = sigmoid(jnp.matmul(input, weights.w_if) + jnp.matmul(h, weights.w_hf) + weights.bf)
+            o = sigmoid(jnp.matmul(input, weights.w_io) + jnp.matmul(h, weights.w_ho) + weights.bo)
+            g = tanh(jnp.matmul(input, weights.w_ig) + jnp.matmul(c, weights.w_hg) + weights.bg)
+            c = f * c + i * g
+            h = o * tanh(c)
+            return (h, c), h
 
-    def forward(x, init_state, ):
-        scan(_cell, init_state)
+        states, weights = carry
+        out_state = []
+        h = x
+        for i in range(num_layers):
+            new_state, h = lstm_cell(states[i], weights[i], h)
+            out_state.append(new_state)
+        return tuple(out_state), h
 
-    return init, forward
+    def run(x, init_state, weights):
+        return scan(_cell, (init_state, weights), x)
+
+    return init, run
 
 
 if __name__ == '__main__':
     rng_seed = PRNGKey(43)
-    ws = init_lstm_cell(rng_seed, 2, 5)
+    hid_dim = 5
+    in_dim = 2
+    num_layers = 3
+    lengths = 4
+    num_datum = 6
+    data_seed, init_seed = split(rng_seed)
+
+    x = normal(data_seed, (lengths, num_datum, in_dim))  # time-major
+
+    init, run = rnn(hid_dim=hid_dim, num_layers=num_layers)
+
+    print(run(x, *init(rng_seed=rng_seed, in_dim=in_dim)))
