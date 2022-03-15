@@ -1,21 +1,17 @@
 from functools import partial
 
 from jax import numpy as jnp, jacrev, jacfwd
-from jax.experimental.sparse import sparsify
 from jax.experimental import sparse
+from jax.experimental.sparse import sparsify
 from jax.lax import while_loop
 from jax.random import PRNGKey, split, normal, bernoulli
 
 
-def all_pairs_norm(a, b):
-    a_sqr = jnp.sum(a * a, 1)[None, :]
-    b_sqr = jnp.sum(b * b, 1)[:, None]
-    diff = jnp.matmul(a, b.T).T
-    return a_sqr + b_sqr - 2 * diff
-
-
 def cost(points, centers):
-    dists = all_pairs_norm(points, centers)
+    a_sqr = jnp.sum(points * points, 1)[None, :]
+    b_sqr = jnp.sum(centers * centers, 1)[:, None]
+    diff = jnp.matmul(points, centers.T).T
+    dists = sparse.todense(a_sqr) + sparse.todense(b_sqr) - 2 * sparse.todense(diff)
     min_dist = jnp.min(dists, axis=0)
     return min_dist.sum()
 
@@ -32,11 +28,11 @@ def kmeans(max_iter, clusters, features, tolerance=1):
         jac_fn = jacrev(partial(cost_sp, features))
         hes_fn = jacfwd(jac_fn)
 
-        new_cluster = clusters - (jac_fn(clusters) / hes_fn(clusters).sum((0, 1))).todense()
+        new_cluster = clusters - jac_fn(clusters) / hes_fn(clusters).sum((0, 1))
         rmse = ((new_cluster - clusters) ** 2).sum()
         return t + 1, rmse, new_cluster
 
-    t, rmse, clusters = while_loop(cond, body, (0, float("inf"), clusters))
+    t, rmse, clusters = while_loop(cond, sparsify(body), (0, float("inf"), clusters))
     return clusters
 
 
@@ -51,7 +47,5 @@ if __name__ == '__main__':
     features = features * bernoulli(sparse_key, sparsity, (num_datapoints, num_features))
     clusters = features[:num_clusters]
     features = sparse.BCOO.fromdense(features)
-    clusters = sparse
     new_cluster = kmeans(max_iter, clusters, features)
-
-
+    print(new_cluster)
