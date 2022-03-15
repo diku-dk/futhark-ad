@@ -71,4 +71,5 @@ if __name__ == '__main__':
     states, out = run(xs, init_state, weights)
 
     primals, run_vjp = vjp(lambda weights: run(xs, init_state, weights), weights)
-    run_vjp(primals)
+    grads = run_vjp(primals)[0][0]
+    print(grads.w_ii)
