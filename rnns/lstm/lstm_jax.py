@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from jax import numpy as jnp, vmap
+from jax import numpy as jnp, vmap, vjp
 from jax.lax import scan
 from jax.nn import sigmoid, tanh
 from jax.random import normal, split, PRNGKey
@@ -63,8 +63,12 @@ if __name__ == '__main__':
     num_datum = 6
     data_seed, init_seed = split(rng_seed)
 
-    x = normal(data_seed, (lengths, num_datum, in_dim))  # time-major
+    xs = normal(data_seed, (lengths, num_datum, in_dim))  # time-major
 
     init, run = rnn(hid_dim=hid_dim, num_layers=num_layers)
 
-    res = run(x, *init(rng_seed=rng_seed, in_dim=in_dim))
+    init_state, weights = init(rng_seed=rng_seed, in_dim=in_dim)
+    states, out = run(xs, init_state, weights)
+
+    primals, run_vjp = vjp(lambda weights: run(xs, init_state, weights), weights)
+    run_vjp(primals)
