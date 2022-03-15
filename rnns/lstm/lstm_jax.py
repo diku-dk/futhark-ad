@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from jax import numpy as jnp
+from jax import numpy as jnp, vmap
 from jax.lax import scan
 from jax.nn import sigmoid, tanh
 from jax.random import normal, split, PRNGKey
@@ -17,7 +17,7 @@ def _lstm_cell(state, weights: LSTM_WEIGHTS, input):
     g = tanh(jnp.matmul(input, weights.w_ig) + jnp.matmul(c, weights.w_hg) + weights.bg)
     c = f * c + i * g
     h = o * tanh(c)
-    return jnp.stack((h, c), 1), h
+    return jnp.stack((h, c)), h
 
 
 def _init_lstm_weights(rng_key, in_dim, hid_dim):
@@ -48,10 +48,10 @@ def rnn(hid_dim=5, num_layers=2):
 
         return (jnp.stack(out_state), weights), h
 
-    def run(x, init_state, weights):
-        return scan(_cell, (init_state, weights), x)
+    def run_vmap(xs, init_state, weights):
+        return vmap(lambda x: scan(_cell, (init_state, weights), x), in_axes=1, out_axes=1)(xs)
 
-    return init, run
+    return init, run_vmap
 
 
 if __name__ == '__main__':
@@ -67,4 +67,4 @@ if __name__ == '__main__':
 
     init, run = rnn(hid_dim=hid_dim, num_layers=num_layers)
 
-    print(run(x, *init(rng_seed=rng_seed, in_dim=in_dim)))
+    res = run(x, *init(rng_seed=rng_seed, in_dim=in_dim))
