@@ -49,7 +49,9 @@ def rnn(hid_dim=5, num_layers=2):
         return (jnp.stack(out_state), weights), h
 
     def run_vmap(xs, init_state, weights):
-        return vmap(lambda x: scan(_cell, (init_state, weights), x), in_axes=1, out_axes=1)(xs)
+
+        init_state = jnp.repeat(jnp.expand_dims(init_state,2), xs.shape[1], axis=2)
+        return scan(_cell, (init_state, weights), xs)
 
     return init, run_vmap
 
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     rng_seed = PRNGKey(43)
     hid_dim = 5
     in_dim = 2
-    num_layers = 3
+    num_layers = 1
     lengths = 4
     num_datum = 6
     data_seed, init_seed = split(rng_seed)
