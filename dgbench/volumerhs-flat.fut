@@ -95,17 +95,19 @@ let volumerhs [Nq][nelem]
             imap (iota Nq2)
               (\_ind ->
                 ( -- this should be sequentialized
-                  #[sequential] replicate Nq zero
-                , #[sequential] replicate Nq zero
-                , #[sequential] replicate Nq zero
-                , #[sequential] replicate Nq zero
-                , #[sequential] replicate Nq zero
+                  #[sequential] replicate Nq (f32.i64 e * opaque zero)
+                , #[sequential] replicate Nq (f32.i64 e * opaque zero)
+                , #[sequential] replicate Nq (f32.i64 e * opaque zero)
+                , #[sequential] replicate Nq (f32.i64 e * opaque zero)
+                , #[sequential] replicate Nq (f32.i64 e * opaque zero)
                 )
               ) |> unzip5
 
+           let e' = i32.i64 e
+           let one = f32.i32 (#[unsafe] (2*e' + 2)/(e' + 1) - 1) 
            -- this also seems transposed; are they talking column major???
            let s_D = imap (iota Nq2)
-                          (\ind -> let (j,i) = get_ji ind in D[j,i])
+                          (\ind -> let (j,i) = get_ji ind in one * #[unsafe] D[j,i])
 
            -- julia for k in 0:n includes n
            let (r_rhsps, r_rhsUs, r_rhsVs, r_rhsWs, r_rhsEs) =
@@ -121,29 +123,29 @@ let volumerhs [Nq][nelem]
                 (\flat_tid ->
                   -- j = threadIdx.y; i = threadIdx.x
                   let (j,i) = get_ji flat_tid
-                  let MJ = vgeo[e, d_MJ, k, j, i]
-                  let (eps_x, eps_y, eps_z) = 
+                  let MJ = #[unsafe] vgeo[e, d_MJ, k, j, i]
+                  let (eps_x, eps_y, eps_z) = #[unsafe]
                     ( vgeo[e, d_eps_x, k, j, i]
                     , vgeo[e, d_eps_y, k, j, i]
                     , vgeo[e, d_eps_z, k, j, i]
                     )
-                  let (nta_x, nta_y, nta_z) =
+                  let (nta_x, nta_y, nta_z) = #[unsafe]
                     ( vgeo[e, d_nta_x, k, j, i]
                     , vgeo[e, d_nta_y, k, j, i]
                     , vgeo[e, d_nta_z, k, j, i]
                     )
-                  let (tau_x, tau_y, tau_z) =
+                  let (tau_x, tau_y, tau_z) = #[unsafe]
                     ( vgeo[e, d_tau_x, k, j, i]
                     , vgeo[e, d_tau_y, k, j, i]
                     , vgeo[e, d_tau_z, k, j, i]
                     )
-                  let z = vgeo[e, d_z, k, j, i]
-                  let (U, V, W) =
+                  let z = #[unsafe] vgeo[e, d_z, k, j, i]
+                  let (U, V, W) = #[unsafe]
                     ( Q[e, d_U, k, j, i]
                     , Q[e, d_V, k, j, i]
                     , Q[e, d_W, k, j, i]
                     )
-                  let (p, E) =
+                  let (p, E) = #[unsafe]
                     ( Q[e, d_p, k, j, i]
                     , Q[e, d_E, k, j, i]
                     )
@@ -255,9 +257,11 @@ let volumerhs [Nq][nelem]
                                   let (j,i) = get_ji flat_tid
                                   let h rg mji rh = rh + mji * rg
                                   in  #[sequential]
-                                      map3 h r_rhs_r[flat_tid] mgiss[flat_tid] rhs[e, d_i, :, j, i]
+                                      map3 h (#[unsafe] r_rhs_r[flat_tid])
+                                             (#[unsafe] mgiss[flat_tid])
+                                             (#[unsafe] rhs[e, d_i, :, j, i])
                               )
-              |>  unflatten Nq Nq
+              |>  #[unsafe] unflatten Nq Nq
            in  [ h_lift r_rhsps d_p
                , h_lift r_rhsUs d_U
                , h_lift r_rhsVs d_V
@@ -268,7 +272,8 @@ let volumerhs [Nq][nelem]
   in rhs'
 
 -- ==
--- random input { [20000][5][5][8][8]f32 [20000][5][5][8][8]f32 [20000][14][5][8][8]f32 [8][8]f32}
+-- entry: objfun
+-- random input { [20000][5][8][8][8]f32 [20000][5][8][8][8]f32 [20000][14][8][8][8]f32 [8][8]f32}
 
 entry objfun [nelem]
         ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
@@ -277,10 +282,10 @@ entry objfun [nelem]
         ( D:    [Nq][Nq]real ) = 
   volumerhs grav rhs (Q, vgeo, D)
 
---entry revdiff [Nq][nelem]
---        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
---        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
---        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
---        ( D:    [Nq][Nq]real )
---        ( rhs_: [nelem][5][Nq][Nq][Nq]real ) =
---  vjp (volumerhs grav rhs) (Q, vgeo, D) rhs_
+entry revdiff [Nq][nelem]
+        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
+        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
+        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
+        ( D:    [Nq][Nq]real )
+        ( rhs_: [nelem][5][Nq][Nq][Nq]real ) =
+  vjp (volumerhs grav rhs) (Q, vgeo, D) rhs_
