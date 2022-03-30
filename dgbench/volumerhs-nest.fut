@@ -248,6 +248,7 @@ let volumerhs [Nq][nelem]
   in rhs'
 
 -- ==
+-- entry: objfun revdiff
 -- random input { [20000][5][5][5][5]f32 [20000][5][5][5][5]f32 [20000][14][5][5][5]f32 [5][5]f32}
 
 entry objfun [nelem]
@@ -257,10 +258,10 @@ entry objfun [nelem]
         ( D:    [Nq][Nq]real ) = 
   volumerhs grav rhs (Q, vgeo, D)
 
---entry revdiff [Nq][nelem]
---        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
---        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
---        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
---        ( D:    [Nq][Nq]real )
---        ( rhs_: [nelem][5][Nq][Nq][Nq]real ) =
---  vjp (volumerhs grav rhs) (Q, vgeo, D) rhs_
+entry revdiff [Nq][nelem]
+        ( rhs:  [nelem][nvar] [Nq][Nq][Nq]real )
+        ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
+        ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
+        ( D:    [Nq][Nq]real ) =
+  vjp (volumerhs grav rhs) (Q, vgeo, D)
+      (replicate nelem (replicate 5 (replicate Nq (replicate Nq (replicate Nq 1)))))
