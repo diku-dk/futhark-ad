@@ -87,9 +87,8 @@ let volumerhs [Nq][nelem]
   -- e = blockIdx().x, j = threadIdx().y, i = threadIdx().x
 
   let rhs' =
-    iota nelem |>
     #[incremental_flattening(only_intra)]
-    map (\ e -> -- Cuda block level
+    tabulate nelem (\ e -> -- Cuda block level
            let Nq2 = Nq*Nq
            let (r_rhsps, r_rhsUs, r_rhsVs, r_rhsWs, r_rhsEs) =
             imap (iota Nq2)
