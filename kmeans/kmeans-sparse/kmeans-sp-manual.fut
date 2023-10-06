@@ -66,7 +66,7 @@ let kmeans_seq_rows [nnz][np1]
                           let (correction, _) = 
                             loop (correction, j) while j < nnz do
                                 let element_value = values[index_start+j]
-                                let column = indices_data[index_start+j]
+                                let column = indices_data[index_start+j] -- #[unsafe]
                                 let cluster_value = cluster[column]
                                 let value = (element_value - 2 * cluster_value)*element_value
                                 in (correction+value, j+1)

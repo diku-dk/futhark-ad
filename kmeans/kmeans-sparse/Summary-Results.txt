@@ -21,6 +21,12 @@ k10-manual  61044      82966   155971
 k10-ad     152234     300388   578560
 slowdown    2.49x      3.62x    3.71x
 
+PyTorch-AD on A100:
+
+movielens 61223871 micro seconds  ~402x
+nytimes 226896187 micro seconds   ~755x
+scrna 367798781 micro seconds     ~635x
+
 
 ---------------------------------
 --- RTX2080Ti Results 10 runs ---
@@ -43,6 +49,17 @@ Speedup
 k10-manual  88070     180806   227881
 k10-ad     190933    1754301   657472
 slowdown    2.17x      9.70x    2.89x
+
+
+PyTorch-AD on RTX 2080 Ti
+
+movielens 64797952   microsecs     ~ 339x
+nytimes  307967208   microsecs     ~ 176x
+scrna    438973687.5 microsecs     ~ 668x
+
+movielens (64797951.822916664, 410284.66022503807) micro seconds
+nytimes (307967208.3333333, 31073390.491559666) micro seconds
+scrna (438973687.5, 4852442.638261393) micro seconds
 
 
 PyTorch-AD on RTX6000

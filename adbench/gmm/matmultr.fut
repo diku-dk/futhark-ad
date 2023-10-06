@@ -1,21 +1,25 @@
+type real = f32
+let sum = f32.sum
 
-
-let matmultr [d][n] (a: [d][n]f64) (b: [d][d]f64) : [n][d]f64 =
+let matmultr [d][n] (a: [d][n]real) (b: [d][d]real) : [n][d]real =
     map (\a_col ->
             map (\b_col ->
-                    map2 (*) a_col b_col  |> f64.sum
+                    map2 (*) a_col b_col  |> sum
                 ) (transpose b)
         ) (transpose a)
 
-let objfun [k][d][n] (ass: [k][d][n]f64, bss: [k][d][d]f64) : [k][n][d]f64 =
+let objfun [k][d][n] (ass: [k][d][n]real, bss: [k][d][d]real) : [k][n][d]real =
     map2 matmultr ass bss
 
 -- ==
--- random input { [200][128][10240]f64 [200][128][128]f64 [200][10240][128]f64 }
+-- random input { [200][128][5120]f32 [200][128][128]f32 [200][5120][128]f32 }
+
+-- random input { [200][128][5120]f64 [200][128][128]f64 [200][5120][128]f64 }
 
 entry main [d][k][n]
-           (ass: [k][d][n]f64)
-           (bss: [k][d][d]f64)
-           (radj:[k][n][d]f64) =
-  vjp objfun (ass, bss) radj
+           (ass: [k][d][n]real)
+           (bss: [k][d][d]real)
+           (radj:[k][n][d]real) =
+  objfun (ass, bss)
+  --vjp objfun (ass, bss) radj
 
