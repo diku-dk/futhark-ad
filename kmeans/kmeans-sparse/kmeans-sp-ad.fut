@@ -21,7 +21,7 @@ let initCenters [nnz][np1]
                 (take first_k_total_nz values)
 
   let cluster_centers =
-        unflatten k columns cluster_centers_flat
+        unflatten cluster_centers_flat
 
   in  cluster_centers
 

@@ -36,7 +36,7 @@ let scatter3D [q][q'][layers][d]
   let (inds, vals) = unzip indvals |> opaque
   let hs_flat = flatten (flatten hs)
   let hs_flat' = scatter hs_flat inds vals
-  in  unflatten layers q (unflatten (layers*q) d hs_flat')
+  in  unflatten (unflatten hs_flat')
 
 let matmul [n][m][p] (A: [n][m]real) (B: [m][p]real) : [n][p]real =
   map (\A_row ->
@@ -141,15 +141,15 @@ let linspace (start: f32) (end: f32) (steps: i64) =
 -- trivial: n=1, l=1, d=3
 let main (q: i64) (n: i64) (l: i64) (d: i64) =
 
-  let wh = unflatten_3d l d d (linspace 0.1 0.2 (l*d*d))
-  let u  = unflatten_3d l d d (linspace 0.1 0.2 (l*d*d))
-  let bh = unflatten    l d   (linspace 0.1 0.2 (l*d))
+  let wh = unflatten_3d (linspace 0.1 0.2 (l*d*d))
+  let u  = unflatten_3d (linspace 0.1 0.2 (l*d*d))
+  let bh = unflatten    (linspace 0.1 0.2 (l*d))
 
   let qr = to_real q
   let shape = replicate q n
-  let inputs  = unflatten (q*n) d (linspace 0.1 (0.2*qr) (q*n*d))
-  let first_h = unflatten_3d q l d (linspace 0.1 (0.2*qr) (q*l*d))
-  let true_values = unflatten (q*n) d (linspace 1.0 (3.0*qr) (q*n*d))
+  let inputs  = unflatten (linspace 0.1 (0.2*qr) (q*n*d))
+  let first_h = unflatten_3d (linspace 0.1 (0.2*qr) (q*l*d))
+  let true_values = unflatten (linspace 1.0 (3.0*qr) (q*n*d))
 
   let objFunBatch' s x y z (a, b, c) = objFunBatch s x y a b c z
   let result = vjp (objFunBatch' shape inputs first_h true_values) (wh, u, bh) 1.0

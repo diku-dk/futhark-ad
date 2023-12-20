@@ -38,8 +38,7 @@ let step [hx4] [h] [d]
             |> map2 (+) bias 
             |> map2 (+) (matvec wght_hh hidn_st)
               
-  let gates'     = assert (4*h == hx4)
-                          (unflatten 4 h gates)
+  let gates'     = unflatten (sized (4*h) gates)
   let ingate     = map sigmoid (gates'[0])
   let forgetgate = map sigmoid (gates'[1])
   let cellgate   = map tanh    (gates'[2])

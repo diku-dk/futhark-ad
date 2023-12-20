@@ -81,13 +81,13 @@ let linspace (start: f32) (end: f32) (steps: i64) =
 -- trivial: n=1, l=1, d=3
 let main (n: i64) (l: i64) (d: i64) =
 
-  let wh = unflatten_3d l d d (linspace 0.1 0.2 (l*d*d))
-  let u  = unflatten_3d l d d (linspace 0.1 0.2 (l*d*d))
-  let bh = unflatten    l d   (linspace 0.1 0.2 (l*d))
+  let wh = unflatten_3d (linspace 0.1 0.2 (l*d*d))
+  let u  = unflatten_3d (linspace 0.1 0.2 (l*d*d))
+  let bh = unflatten    (linspace 0.1 0.2 (l*d))
 
-  let inputs  = unflatten n d (linspace 0.1 0.2 (n*d))
-  let first_h = unflatten l d (linspace 0.1 0.2 (l*d))
-  let true_values = unflatten n d (linspace 100.0 300.0 (n*d))
+  let inputs  = unflatten (linspace 0.1 0.2 (n*d))
+  let first_h = unflatten (linspace 0.1 0.2 (l*d))
+  let true_values = unflatten (linspace 100.0 300.0 (n*d))
 
   let objFun' x y z (a, b, c) = objFun x y a b c z
   let result = vjp (objFun' inputs first_h true_values) (wh, u, bh) 1.0

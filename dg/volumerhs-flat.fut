@@ -265,7 +265,7 @@ let volumerhs [Nq][nelem]
                                              (#[unsafe] mgiss[flat_tid])
                                              (#[unsafe] rhs[e, d_i, :, j, i])
                               )
-              |>  #[unsafe] unflatten Nq Nq
+              |>  (#[unsafe] sized (Nq*Nq)) |> unflatten
            in  [ h_lift r_rhsps d_p
                , h_lift r_rhsUs d_U
                , h_lift r_rhsVs d_V
@@ -291,5 +291,6 @@ entry revdiff [Nq][nelem]
         ( Q:    [nelem][nvar] [Nq][Nq][Nq]real ) 
         ( vgeo: [nelem][nvgeo][Nq][Nq][Nq]real )
         ( D:    [Nq][Nq]real ) =
+  #[unsafe]
   vjp (volumerhs grav rhs) (Q, vgeo, D)
       (replicate nelem (replicate 5 (replicate Nq (replicate Nq (replicate Nq 1)))))

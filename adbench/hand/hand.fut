@@ -145,7 +145,7 @@ let objective [num_bones][N][M][num_us]
                map2 (-) point vertex_positions[:, correspondence])
             (transpose points) correspondences
      else -- "Complex" case
-     let us = unflatten N 2 us
+     let us = unflatten (sized (N*2) us)
      in map3 (\point correspondence u ->
              let verts = model.triangles[correspondence]
              let hand_point =
@@ -203,7 +203,7 @@ entry calculate_jacobian [num_bones][N][M][num_us]
     in jvp (\(a,b) -> objective model correspondences points a b)
            (theta,us) (theta',us')
   let us_derivs = if num_us == 0 then 0 else 2
-  let J = map (flatten_to (N*3)) (tabulate (theta_count+us_derivs) f)
+  let J = map flatten (tabulate (theta_count+us_derivs) f)
   in if num_us == 0
      then J
      else
